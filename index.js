@@ -62,8 +62,19 @@ ipcMain.on('debug', function(event, arg) {
 var config = fs.readFileSync('config.html');
 
 var server = http.createServer(function (req, res) {
-  res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
-  res.end(config);
+
+  if(req.url === '/src/js/back.js'){
+    res.writeHead(200, {'Content-Type': 'application/javascript; charset=utf-8'});
+    res.end(fs.readFileSync(__dirname + req.url));
+  }
+  else if(req.url === '/src/style/back.css'){
+    res.writeHead(200, {'Content-Type': 'text/css; charset=utf-8'});
+    res.end(fs.readFileSync(__dirname + req.url));
+  }
+  else{
+    res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
+    res.end(fs.readFileSync('config.html'));
+  }
 });
 
 const PORT = process.env.PORT || 8080;
