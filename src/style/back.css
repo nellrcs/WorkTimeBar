@@ -1,37 +1,47 @@
 input,textarea,select,#criarTask{
     width: 300px
-    }
-    #topo{
+  }
+  #topo{
     width: 100%;
-    }
-    #task,#tasks{
+  }
+  #task,#tasks{
     float:left;
     width: 50%;
     overflow-y: scroll;
-    }
-    #totalBar{  
+  }
+  #totalBar{  
     width:  300px;
-    padding: 20px;
-    }
-    #btLimpar{
+  }
+  #btLimpar{
     float: right;
-    }
-    ul{
+  }
+  ul{
     list-style: none;
     width: 400px;
-    }
-    ul li{ 
+  }
+  ul li{ 
     text-align: right; padding: 10px; border-bottom: 1px solid #222;
     color: blue;
-    }
-    ul li strong{
+  }
+  ul .active{
+      background: pink;
+  }
+  ul li strong{
     color: #222;
-    }
-    ul li button{
+  }
+  ul li button{
     float: right;
     margin-left: 20px;
-    }
-    button{
-        color: #fff;
+  }
+  button{
+      color: #fff;
     background-color: #444;
-    }
+  }
+  progress{ 
+   appearance: none;
+  }
+  #tasks progress::-webkit-progress-value {
+    background-color: blue;
+    border-right: var(--timeStop) solid #ff5b00;
+    border-left: var(--progress) solid green;
+  }

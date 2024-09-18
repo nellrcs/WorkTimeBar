@@ -6,8 +6,12 @@ const socketIo = require('socket.io');
 
 const path = require('node:path');
 
+let packege = {};
+let globalEvent = null;
+
 async function createCheckWindow () {
   childWindow = new BrowserWindow({ 
+    
     width:800, 
     height:86,
     minWidth: 200,
@@ -22,8 +26,9 @@ async function createCheckWindow () {
 
     fullscreenable: false,
     maximizable: false,
-   /*  resizable: false , */
+    
     webPreferences: {
+    
       nodeIntegration: true,
       contextIsolation: false
     }
@@ -54,10 +59,6 @@ app.on('window-all-closed', () => {
   }
 });
 
-ipcMain.on('debug', function(event, arg) {
-  console.log(arg); 
-  event.returnValue = 'pong';
-});
 
 var config = fs.readFileSync('config.html');
 
@@ -91,8 +92,30 @@ io.on('connection', (socket) => {
   });
 
   socket.on('evento', (msg) => {
-    console.log(msg)
-    //io.emit('chat message', msg);
+    packege = msg;
+    if(globalEvent){
+      globalEvent.sender.send('instuctions', packege);
+    }
   });
+
+  ipcMain.on('status', function(event, arg) {
+    //console.log(arg);
+    socket.emit('update', arg);
+  });
+
 });
+
+
+ipcMain.on('online', function(event, arg) {
+  globalEvent = event;
+  event.sender.send('server', `Servidor rodando no endereco http://locahost:${PORT}`);
+});
+
+
+/*
+ipcMain.handle('instuctions', (event, value) => {
+  return `${value} pong`;
+});
+*/
+
 

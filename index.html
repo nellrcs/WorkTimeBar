@@ -7,14 +7,17 @@
     <title>Document</title>
     <link rel="stylesheet" href="src/style/front.css">
 </head>
-<body>
+<body id="main" class="on">
+    <p id="activityTitle"></p>
     <div class="esqBar">
-    <div id="barView"></div>
+        <div id="barView">
+            Nenhuma tarefa Selecionada.
+        </div>
+        
     </div>
-
     <div class="dirBar">
-    <div role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="--value: 10"></div>
-    </div> 
+        <div id="control" class="play" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="--value: 0"></div>
+    </div>
 </body>
 <script src="src/js/front.js"></script>
 </html>
