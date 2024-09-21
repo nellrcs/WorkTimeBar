@@ -3,7 +3,6 @@ var http = require('http');
 var fs = require('fs');
 
 const socketIo = require('socket.io');
-
 const path = require('node:path');
 
 let packege = {};
@@ -11,12 +10,12 @@ let globalEvent = null;
 
 async function createCheckWindow () {
   childWindow = new BrowserWindow({ 
-    
-    width:800, 
-    height:86,
-    minWidth: 200,
-    minHeight: 86,
-    maxHeight: 86,
+    /*
+    width:880, 
+    height:95,
+    minWidth: 400,
+    minHeight: 95,
+    maxHeight: 95,
     autoHideMenuBar: true,
 
     titleBarStyle: 'customButtonsOnHover',
@@ -26,7 +25,7 @@ async function createCheckWindow () {
 
     fullscreenable: false,
     maximizable: false,
-    
+    */
     webPreferences: {
     
       nodeIntegration: true,
@@ -34,13 +33,13 @@ async function createCheckWindow () {
     }
   });
   
-  childWindow.loadFile(__dirname + '/index.html')
+  childWindow.loadFile(__dirname + '/index2.html')
 
   childWindow.webContents.on('dom-ready', () => { 
     childWindow.show(); 
   }); 
 
-  //childWindow.webContents.openDevTools();
+  childWindow.webContents.openDevTools();
   //{ parent: mainWindow, modal: true, show: false,  frame: false ,  width:450,  height:300}
 }  
 
@@ -60,11 +59,13 @@ app.on('window-all-closed', () => {
 });
 
 
-var config = fs.readFileSync('config.html');
-
 var server = http.createServer(function (req, res) {
 
   if(req.url === '/src/js/back.js'){
+    res.writeHead(200, {'Content-Type': 'application/javascript; charset=utf-8'});
+    res.end(fs.readFileSync(__dirname + req.url));
+  }
+  else if(req.url === '/src/js/Progress.class.js'){
     res.writeHead(200, {'Content-Type': 'application/javascript; charset=utf-8'});
     res.end(fs.readFileSync(__dirname + req.url));
   }
@@ -98,8 +99,12 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('stop', (msg) => {
+      globalEvent.sender.send('stop', msg);
+  });
+
   ipcMain.on('status', function(event, arg) {
-    //console.log(arg);
+    console.log(arg);
     socket.emit('update', arg);
   });
 
@@ -111,11 +116,5 @@ ipcMain.on('online', function(event, arg) {
   event.sender.send('server', `Servidor rodando no endereco http://locahost:${PORT}`);
 });
 
-
-/*
-ipcMain.handle('instuctions', (event, value) => {
-  return `${value} pong`;
-});
-*/
 
 

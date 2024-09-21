@@ -1,191 +1,212 @@
+import Progress, {convertSecondsToHour, convertFloatToHous, convertSeconds} from './Progress.class.js';
+
 var socket = io();
-var criarTask = document.getElementById("criarTask");
-var barId = document.getElementById("barId");
-var descricao = document.getElementById("descricao");
-var tasks = document.getElementById("tasks");
-var totalBar = document.getElementById("totalBar");
-var btLimpar = document.getElementById("btLimpar");
-var inputTotal = document.getElementById("inputTotal");
-  
-var tarefasFeitas = [];
+const CRIARTASK = document.getElementById("criarTask");
+const BARID = document.getElementById("barId");
+const DESCRIPTION = document.getElementById("description");
+const TASKS = document.getElementById("tasks");
+const TOTALBAR = document.getElementById("totalBar");
+const BTCLEAR = document.getElementById("btCleaar");
+const INPUTTOTAL = document.getElementById("inputTotal");
+const MAXHOUR = document.getElementById("maxHour"); 
+const PAUSEALL = document.getElementById("btPauseAll");
+
+var taskList = [];
 var maxValueVar = 8.0;
 var usedValue = 0.0;
   
-inputTotal.value = maxValueVar;
-  
-  criarTask.onclick = () => {
-    updataData({
-      id:Date.now().toString(16),
-      title:descricao.value,
-      totalTimeFloat:barId.value,
-      totalTimeSeconds:convertSeconds(barId.value),
-      totalProgress:0,
-      totaltimeStop:0,
-      active:false
-    });
-      
-    barId.value = "0";
-    descricao.value = "";
-    rangeValue.innerText="00:00h = 0"; 
-  }
-  
-  btLimpar.onclick = () => {
-    if(confirm("Deseja apagar esta lista?")){
-      localStorage.clear();
-      tarefasFeitas = [];
-      iniciarLista();
-      gerarLista();
-    }
-  }
-  
-  function updataData(tarefa){
-    tarefasFeitas.push(tarefa);
-    updataDataAllData();
-    setMaxbar(maxValueVar);
-  }
+INPUTTOTAL.value = maxValueVar;
 
-  function updataDataAllData(){
-    localStorage.setItem("tarefas",JSON.stringify(tarefasFeitas));
-  }
-  
-  function convertSeconds(valor){
-    return  parseInt(((valor)*60)*60);
-  }
+INPUTTOTAL.oninput = (e) => {
+  setMaxbar(e.target.value);
+}
 
-  function gerarLista(){
-    var tempoTotal = 0;
-    var ul = document.createElement('ul');
+BARID.oninput = (e) => {
+  setRangeValue(e.target.value)
+}
+
+CRIARTASK.onclick = () => {
+  if(parseFloat(BARID.value) > 0){
+    let progress = new Progress();
+    progress.id=Date.now().toString(16),
+    progress.title=DESCRIPTION.value,
+    progress.totalTimeFloat=BARID.value,
+    progress.totalTimeSeconds=convertSeconds(BARID.value),
+    progress.totalProgress=0,
+    progress.totalTimePause=0,
+    progress.active=false
+    
+    updataData(progress);
+
+    BARID.value = "0";
+    DESCRIPTION.value = "";
+    rangeValue.innerText="00:00h = 0";
+  }   
+}
+  
+BTCLEAR.onclick = () => {
+  if(confirm("Deseja remover todos os itens da lista?")){
+    localStorage.clear();
+    taskList = [];
+    listCreate();
+  }
+}
+
+PAUSEALL.onclick = () => {
+  stopAll();
+}
+  
+(function(){
+  if(localStorage.getItem("tarefas") === null){
+    localStorage.setItem("tarefas",[]);
+  }else{
+    listCreate();
+  }
+})();
+
+function updataData(tarefa){
+  taskList.push(tarefa);
+  updataDataAllData();
+  setMaxbar();
+}
+
+function updataDataAllData(){
+  localStorage.setItem("tarefas",JSON.stringify(taskList));
+}
+  
+  function listCreate(){
+    let tempoTotal = 0;
+    TASKS.innerHTML = "";
     if(localStorage.getItem("tarefas").length > 1){
-      tarefasFeitas = JSON.parse(localStorage.getItem("tarefas"));
-      for (var i = 0; i < tarefasFeitas.length; i++) {
-        
-        tempoTotal = (tempoTotal + parseFloat(tarefasFeitas[i].totalTimeFloat));
-        var li = document.createElement('li');
-        li.innerText = tarefasFeitas[i].title;
-        var strong = document.createElement('strong');
-        var button = document.createElement('button');
-        button.innerText = "x"; 
-        button.value = i;
-        li.id = i;
-        
-        console.log(tarefasFeitas[i].active);
-        if(tarefasFeitas[i].active){
-          li.classList.add("active");
-        }
-        
-        strong.innerHTML = convert(tarefasFeitas[i].totalTimeFloat).tempo;
-        button.addEventListener('click',(e)=>{
-          removeArray(e.target.value);
-        });
-        
-        li.addEventListener('click',(e) => {
-          setItemActive(e.target.id);
-          gerarLista();
-        });
-        
-        li.appendChild(strong);
-        li.appendChild(barraDinamica(tarefasFeitas[i]));
-        li.appendChild(button);
-        ul.appendChild(li)
+      taskList = JSON.parse(localStorage.getItem("tarefas"));
+      for (var i = 0; i < taskList.length; i++) {
+        tempoTotal = tempoTotal + parseFloat(taskList[i].totalTimeFloat);
+        TASKS.appendChild(itemTr(i));
       }
     };
     updateBar(tempoTotal);
-    tasks.innerHTML = "";
-    tasks.appendChild(ul);
   };
   
   function updateBar(tempoTotal){
     usedValue = tempoTotal;
     
     if(usedValue >= maxValueVar){
-      barId.disabled = true;
-      criarTask.disabled = true;
+      BARID.disabled = true;
+      CRIARTASK.disabled = true;
     }else{
-      barId.max = maxValueVar - usedValue;
-      barId.disabled = false;
-      criarTask.disabled = false;
+      BARID.max = maxValueVar - usedValue;
+      BARID.disabled = false;
+      CRIARTASK.disabled = false;
     }
-    inputTotal.min = usedValue;
+    INPUTTOTAL.min = usedValue;
     
-    var novoVal = parseInt((usedValue * 100) / maxValueVar);
-    if(novoVal > 100){
-      totalBar.value = 100;
+    var newValue = parseInt((usedValue * 100) / maxValueVar);
+    if(newValue > 100){
+      TOTALBAR.value = 100;
+      TOTALBAR.innerText = "100%";
+      TOTALBAR.style.width =  "100%";
     }else{
-      totalBar.value = novoVal;
+      TOTALBAR.value = newValue;
+      TOTALBAR.innerText = newValue + "%";
+      TOTALBAR.style.width = newValue + "%";
     }
   };
-  function iniciarLista(){
-    if(localStorage.getItem("tarefas") === null){
-      localStorage.setItem("tarefas",[]);
-    }else{
-      gerarLista();
+
+    function removeArray(i){
+      taskList.splice(i, 1);
+      localStorage.setItem("tarefas",JSON.stringify(taskList));
+      setMaxbar();
     }
-  }
-  
-  function barraDinamica(item){
+ 
+    function setItemActive(index){
+      taskList.map(tarefa=>tarefa.active=false);
+      if(typeof taskList[index] !== "undefined"){
+        taskList[index].active = true;
+      }
+      socket.emit('evento', taskList[index]);
+      localStorage.setItem("tarefas",JSON.stringify(taskList));
+      setMaxbar();
+    }
+
+    function setMaxbar(){
+      listCreate();
+      maxValueVar = INPUTTOTAL.value;
+      BARID.max = maxValueVar - usedValue;
+      MAXHOUR.innerText = parseInt(BARID.max) + "h"; 
+    }
     
+    function setRangeValue(value){
+      rangeValue.innerText =  convertFloatToHous(value).tempo;
+    }
+
+    function setCheckActive(i){
+      setItemActive(i);
+      listCreate();
+    }
+
+  function stopAll(){
+    taskList.map(tarefa=>tarefa.active=false);
+    localStorage.setItem("tarefas",JSON.stringify(taskList));
+    setMaxbar();
+    listCreate();
+    socket.emit('stop', {});
+  }
+
+  function itemTr(i){
+
+    let item = taskList[i];
     let tempo = parseInt((item.totalTimeFloat * 100) / maxValueVar);
-    let bar = document.createElement('progress');
-    let widthBar = (tempo * 160) / 100;
-    let locaProgress = (widthBar * (item.totalProgress - item.totaltimeStop)) / item.totalTimeSeconds;
-    let locaStopProgress = (widthBar * item.totaltimeStop) / item.totalTimeSeconds;
-    
-    bar.setAttribute('value',tempo);
-    bar.setAttribute('min', '0');
-    bar.setAttribute('max', '100');
-    bar.setAttribute('style', '--timeStop: '+locaStopProgress+'px;--progress: '+locaProgress+'px');
+    let sPlay = convertSecondsToHour(item.totalProgress);
+    let sPause = convertSecondsToHour(item.totalTimeSeconds - item.totalTimePause);
 
-    return bar;
-  }
-  
-  function convert(valor){
-    var hora = "";
-    if(valor >= 100 ){
-      hora += (`000${Math.floor(valor)}`).slice(-3)  + ":";
-    }else{
-      hora += (`00${Math.floor(valor)}`).slice(-2)  + ":";
-    }
-    
-    if(valor <= 1){
-      hora += (`00${parseInt((parseInt(valor*100)*60) / 100)}`).slice(-2);
-    }else{  
-      hora += (`00${(Math.ceil(valor*60) %60)}`).slice(-2);
-    }
-    return  {"tempo": hora + "h = " + valor};
-  }
-  
-  function removeArray(i){
-    tarefasFeitas.splice(i, 1);
-    localStorage.setItem("tarefas",JSON.stringify(tarefasFeitas));
-    setMaxbar(maxValueVar);
-  }
-  
-  function setItemActive(index){
-    tarefasFeitas.map(tarefa=>tarefa.active=false);
-    tarefasFeitas[index].active = true;
-    socket.emit('evento', tarefasFeitas[index]);
-    localStorage.setItem("tarefas",JSON.stringify(tarefasFeitas));
-    setMaxbar(maxValueVar);
-  }
-  
-  function setMaxbar(value){
-    maxValueVar = value;
-    barId.max = maxValueVar - usedValue;
-    gerarLista();
-  }
-  
-  function setRangeValue(value){
-    rangeValue.innerText =  convert(value).tempo;
-  }
+    var tr = document.createElement('tr');
+    tr.classList.add('border-b','bg-white','hover:bg-gray-50','dark:border-gray-700','dark:hover:bg-gray-600','dark:bg-gray-800');
+    tr.innerHTML = ( `
+        
+                  <td class="w-4 p-4">
+                    <div class="flex items-center">
+                      <input type="checkbox" data-check='${i}' class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-800" ${item.active ? ' checked' : '' }/>
+                    </div>
+                  </td>
+                  <th scope="row" class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white">${item.title}</th>
+            <td class="px-6 py-4">
+                   <div class="mx-0 h-5 w-full rounded bg-gray-200 dark:bg-gray-700">
+                      <div class="h-5 rounded bg-blue-500" style="width: ${tempo}%"></div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4"> <span class="text-blue-500"> ${sPlay}</span>/  <span class="text-white-500">${sPause}</span> </td>
+                  <td class="px-6 py-4">
+                  </button>
+                  
+                    <button type="button" data-remove='${i}' class="clickRemove text-red-500 hover:text-white focus:outline-none font-medium  text-sm p-2.5 text-center inline-flex items-center dark:hover:text-white">
 
-  socket.on('update', (arg)=>{
-    tarefasFeitas.map(tarefa => { 
-      if(tarefa.id == arg.id){ 
-        tarefa.totalProgress = arg.totalProgress; 
-        tarefa.totaltimeStop = arg.totaltimeStop; 
-      }});
-    updataDataAllData();
-    gerarLista();
-  });
-  
-  iniciarLista();
+                    <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24">
+                      <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"/>
+                    </svg>                    
+                              
+                    <span class="sr-only">Excluir</span>
+                  </button>
+                  </td>
+
+`).trim();
+
+tr.querySelector("[data-remove='"+i+"']").addEventListener('click',function () {
+  removeArray(i)
+});
+
+tr.querySelector("[data-check='"+i+"']").addEventListener('click',function () {
+  setCheckActive(i)
+});
+
+return tr
+}
+
+socket.on('update', (arg)=>{
+  taskList.map(tarefa => { 
+    if(tarefa.id == arg.id){ 
+      tarefa.totalProgress = arg.totalProgress; 
+      tarefa.totalTimePause = arg.totalTimePause;
+    }});
+  updataDataAllData();
+  listCreate();
+});
