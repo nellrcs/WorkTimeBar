@@ -10,6 +10,7 @@ const BTCLEAR = document.getElementById("btCleaar");
 const INPUTTOTAL = document.getElementById("inputTotal");
 const MAXHOUR = document.getElementById("maxHour"); 
 const PAUSEALL = document.getElementById("btPauseAll");
+const STATUSOFFLINE = document.getElementById("statusOffLine");
 
 var taskList = [];
 var maxValueVar = 8.0;
@@ -116,6 +117,7 @@ function updataDataAllData(){
       taskList.splice(i, 1);
       localStorage.setItem("tarefas",JSON.stringify(taskList));
       setMaxbar();
+      socket.emit('stop', {});
     }
  
     function setItemActive(index){
@@ -203,10 +205,15 @@ return tr
 
 socket.on('update', (arg)=>{
   taskList.map(tarefa => { 
-    if(tarefa.id == arg.id){ 
+    if(tarefa.id === arg.id){ 
       tarefa.totalProgress = arg.totalProgress; 
       tarefa.totalTimePause = arg.totalTimePause;
+      console.log("UPDATE:");
+      console.log(tarefa);
     }});
   updataDataAllData();
   listCreate();
+});
+socket.on('exit', (arg)=>{
+  STATUSOFFLINE.style.display = "block";
 });

@@ -45,5 +45,9 @@ export  function convertSeconds(time){
 }
 
 export function barPercentage(value,max){
-  return parseInt( (100 * value) / max);
+  let bar = parseInt( (100 * value) / max);
+  if(bar <= 100){
+    return bar;
+  }
+  return 100;
 }

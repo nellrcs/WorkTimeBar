@@ -9,8 +9,8 @@ let packege = {};
 let globalEvent = null;
 
 async function createCheckWindow () {
-  childWindow = new BrowserWindow({ 
-    /*
+  childWindow = new BrowserWindow({
+    
     width:880, 
     height:95,
     minWidth: 400,
@@ -25,7 +25,8 @@ async function createCheckWindow () {
 
     fullscreenable: false,
     maximizable: false,
-    */
+    
+  
     webPreferences: {
     
       nodeIntegration: true,
@@ -39,7 +40,7 @@ async function createCheckWindow () {
     childWindow.show(); 
   }); 
 
-  childWindow.webContents.openDevTools();
+  //childWindow.webContents.openDevTools();
   //{ parent: mainWindow, modal: true, show: false,  frame: false ,  width:450,  height:300}
 }  
 
@@ -85,7 +86,9 @@ server.listen(PORT, () => {
 });
 
 const io = socketIo(server);
+
 io.on('connection', (socket) => {
+
   console.log('Um usuario se conectou');
 
   socket.on('disconnect', () => {
@@ -108,12 +111,17 @@ io.on('connection', (socket) => {
     socket.emit('update', arg);
   });
 
+  ipcMain.on('exit',function(event,arg){
+    socket.emit('exit', arg);
+    process.exit();
+  });
+  
 });
 
 
 ipcMain.on('online', function(event, arg) {
   globalEvent = event;
-  event.sender.send('server', `Servidor rodando no endereco http://locahost:${PORT}`);
+  event.sender.send('server', `Acesse http://locahost:${PORT} para criar uma nova atividade`);
 });
 
 

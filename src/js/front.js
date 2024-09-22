@@ -3,13 +3,16 @@ const {ipcRenderer} = require('electron');
 
 var control = document.getElementById("control");
 //control.style.display = 'none';
-//var barView = document.getElementById("barView");
+var serverMsg = document.getElementById("serverMsg");
 var activityTitle = document.getElementById("activityTitle");
 //var body = document.getElementById('main');
 var barraAtual = document.getElementById('barraAtual');
 var play = document.getElementById('play');
 var pause = document.getElementById('pause');
 var runTime = document.getElementById('runTime');
+var waitingTime = document.getElementById('waitingTime');
+var timeStopCount = document.getElementById('timeStopCount');
+var exitApp = document.getElementById('exitApp');
 var contador = false;
 var stopContador = false;
 var backupProgress = 0;
@@ -17,16 +20,16 @@ var objbarra = null;
 
 play.style.display = "block";
 pause.style.display = "none";
+timeStopCount.style.display = "none";
+
+exitApp.onclick = () => {
+  ipcRenderer.send('exit', {});
+}
 
 ipcRenderer.on('instuctions', (event, arg) => {
+  exitApp.style.display = 'inline-flex'; 
   objbarra = new Progress();
-  clearInterval(contador);
-  clearInterval(stopContador);
-  contador = false;
-  stopContador = false;
-
-  play.style.display = "block";
-  pause.style.display = "none";
+  endCountBar();
 
   objbarra.id = arg.id;
   objbarra.title = arg.title;
@@ -35,23 +38,23 @@ ipcRenderer.on('instuctions', (event, arg) => {
   objbarra.totalTimePause = arg.totalTimePause;
   objbarra.active = arg.totalTimePause;
   backupProgress = arg.totalProgress;
+
+  console.log('Recebido');
+  console.log(objbarra);
   criarBarra();
 });
 
 ipcRenderer.on('stop', (event, arg) => {
   objbarra = new Progress();
-  clearInterval(contador);
-  clearInterval(stopContador);
-  contador = false;
-  stopContador = false;
-  defaultContent();
+  endCountBar()
+
 });
 
 control.addEventListener("click", (e) => {
   let n = true;
   if(objbarra.active === true){
     n = false;
-    stopBarra();
+    pauseBar();
   } 
   if(n && !contador){
     playBarras();
@@ -60,50 +63,36 @@ control.addEventListener("click", (e) => {
 });
 
 function criarBarra(){ 
-    //barView.innerHTML = '';
-    //control.style.display = 'grid';
-    //let barra = document.createElement("progress");
-    //barra.setAttribute('value', barPercentage(backupProgress,objbarra.totalTimeSeconds));
-    //barra.setAttribute('min', 0);
-    //barra.setAttribute('max', 100);
-    //barra.setAttribute('id', 'pb');
-    //barView.appendChild(barra);
-
+    play.style.display = "block";
+    pause.style.display = "none";
+    timeStopCount.style.display = "none";
+    control.disabled = false;
+    runTime.textContent = convertSecondsToHour(backupProgress);
     barraAtual.style.width = barPercentage(backupProgress,objbarra.totalTimeSeconds) + "%";
     activityTitle.innerHTML = objbarra.title;
-    //control.setAttribute('style','--value: '+ barPercentage(objbarra.totalTimePause,objbarra.totalTimeSeconds));
-    //body.classList.remove("off");
-    //body.classList.add("on");
 }
-
-function defaultContent(){ 
-  //control.style.display = 'none';
-  //barView.innerHTML = "...";
-  //body.classList.remove("off");
-  //body.classList.add("on");
-}
-
 
 function playBarras(){ 
-
-
+  
      play.style.display = "none";
      pause.style.display = "block";
+     timeStopCount.style.display = "none";
 
      if(objbarra.totalProgress <= 0){
       objbarra.lastTimestempPlay = (Date.now() - (backupProgress * 1000)) + ( 1000 * objbarra.totalTimeSeconds );
      }
 
-     pauseStopCountBarra();
+     endCountBar();
      contador = setInterval(function() {   
         //let barraAtual = document.getElementById('pb');
 
        if(objbarra.totalProgress >= objbarra.totalTimeSeconds){
-         stopBarra();
+         pauseBar();
+         control.disabled = true;
        }else{
          objbarra.totalProgress = (objbarra.totalTimeSeconds - Math.ceil((objbarra.lastTimestempPlay - Date.now())/1000));
          barraAtual.style.width = barPercentage(objbarra.totalProgress,objbarra.totalTimeSeconds) + "%";
-         runTime.textContent = convertSecondsToHour(objbarra.totalProgress - objbarra.totalTimePause);
+         runTime.textContent = convertSecondsToHour(objbarra.totalProgress);
          ipcRenderer.send('status', objbarra);
        }      
   }, 1000);
@@ -112,39 +101,42 @@ function playBarras(){
 function stopCountBarra(){
     let totalTimePauseBkup = objbarra.totalTimePause;
     objbarra.lastTimestempPause = Date.now();
+    timeStopCount.style.display = "inline-flex";
+    waitingTime.textContent = "00:00:00";
+
      stopContador = setInterval(function() {
        if( (parseInt(objbarra.totalProgress) >= objbarra.totalTimeSeconds )){            
-         //body.classList.remove("on");
-         //body.classList.add("off");
-         pauseStopCountBarra();
+         endCountBar();
        }else{  
+        
         let iTime = parseInt((Date.now() - objbarra.lastTimestempPause) / 1000);
         objbarra.totalProgress = (objbarra.totalTimeSeconds - Math.ceil((objbarra.lastTimestempPlay - Date.now())/1000));
         objbarra.totalTimePause =  totalTimePauseBkup + iTime;
-        objbarra.currentTimePause = iTime;
-        
-        //control.setAttribute('style','--value: '+ barPercentage(objbarra.totalTimePause,objbarra.totalTimeSeconds));
+        objbarra.currentTimePause = iTime; 
+        waitingTime.textContent = " - "+ convertSecondsToHour(objbarra.currentTimePause);
         ipcRenderer.send('status', objbarra);
        }
   }, 1000);
 }
 
-function pauseStopCountBarra(){
+function endCountBar(){
+  clearInterval(contador);
   clearInterval(stopContador);
+  contador = false;
+  stopContador = false;
 }
 
-function stopBarra(){
+function pauseBar(){
 
   play.style.display = "block";
   pause.style.display = "none";
+  timeStopCount.style.display = "none";
   
-  clearInterval(contador);
-  contador = false;
+  endCountBar();
   stopCountBarra();
 }
 
 ipcRenderer.send('online', '1');
-
 ipcRenderer.on('server', (event, arg) => {
-  //barView.innerHTML = arg;
+  serverMsg.innerHTML = arg;
 });
