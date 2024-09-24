@@ -30,6 +30,6 @@
     "http": "^0.0.1-security",
     "path": "^0.12.7",
     "socket.io": "^4.7.5",
-    "websocket": "^1.0.35"
+    "sqlite3": "^5.1.7"
   }
 }

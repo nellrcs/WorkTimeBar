@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, Notification  } = require('electron');
 var http = require('http');
 var fs = require('fs');
+//var Crud = require('./src/js/Crud')
+//var db = new Crud(__dirname);
 
 const socketIo = require('socket.io');
 const path = require('node:path');
@@ -8,14 +10,16 @@ const path = require('node:path');
 let packege = {};
 let globalEvent = null;
 
+const PORT = process.env.PORT || 8080;
+
 async function createCheckWindow () {
   childWindow = new BrowserWindow({
     
-    width:880, 
-    height:95,
-    minWidth: 400,
-    minHeight: 95,
-    maxHeight: 95,
+    width:450, 
+    height:104,
+    minWidth: 450,
+    minHeight: 104,
+    maxHeight: 104,
     autoHideMenuBar: true,
 
     titleBarStyle: 'customButtonsOnHover',
@@ -34,7 +38,7 @@ async function createCheckWindow () {
     }
   });
   
-  childWindow.loadFile(__dirname + '/index2.html')
+  childWindow.loadFile(__dirname + '/index.html')
 
   childWindow.webContents.on('dom-ready', () => { 
     childWindow.show(); 
@@ -43,7 +47,6 @@ async function createCheckWindow () {
   //childWindow.webContents.openDevTools();
   //{ parent: mainWindow, modal: true, show: false,  frame: false ,  width:450,  height:300}
 }  
-
 
 app.whenReady().then(() => {
     createCheckWindow()
@@ -58,7 +61,6 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
-
 
 var server = http.createServer(function (req, res) {
 
@@ -80,7 +82,7 @@ var server = http.createServer(function (req, res) {
   }
 });
 
-const PORT = process.env.PORT || 8080;
+
 server.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
@@ -111,6 +113,14 @@ io.on('connection', (socket) => {
     socket.emit('update', arg);
   });
 
+  ipcMain.on('next',function(event,arg){
+    socket.emit('next', arg);
+  });
+
+  ipcMain.on('back',function(event,arg){
+    socket.emit('back', arg);
+  });
+
   ipcMain.on('exit',function(event,arg){
     socket.emit('exit', arg);
     process.exit();
@@ -121,7 +131,7 @@ io.on('connection', (socket) => {
 
 ipcMain.on('online', function(event, arg) {
   globalEvent = event;
-  event.sender.send('server', `Acesse http://locahost:${PORT} para criar uma nova atividade`);
+  event.sender.send('server', `Acesse <a class="text-blue-500" href="#">http://locahost:${PORT}</a> para criar uma nova atividade`);
 });
 
 

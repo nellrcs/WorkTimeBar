@@ -7,75 +7,122 @@
     <link rel="stylesheet" href="src/style/back.css">
 </head>
 <body>
-  <div id="statusOffLine" style="display: none">Voce nao esta conecatado</div>
-  <div class="min-h-screen bg-gray-900 font-sans">
-    <div class="container mx-20 flex flex-row">
-      <div class="basis-1/2">
-        <h1 class="mb-6 mt-6 text-3xl font-black dark:text-white">Cadastro de Atividades</h1>
-  
-        <label for="" class="dark:text-white">Tempo total para todas as atividades em horas: </label>
-        <input type="number" id="inputTotal" value="8" class="mb-7 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500" />
-  
-        <label for="" class="dark:text-white">Titulo da atividade:</label>
-        <input type="text" id="description" class="mb-8 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500" />
-  
-        <label for="" class="dark:text-white">Tempo Maximo da atividade: <span class="me-2 ms-2 rounded bg-blue-100 px-2.5 py-0.5 font-semibold text-blue-800 dark:bg-blue-200 dark:text-blue-800" id="rangeValue">00:00h</span></label>
-        <div class="relative mb-6">
-          <input id="barId" type="range" value="0" step="0.1" min="0" max="8" class="h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 dark:bg-gray-700"/>
-          <span class="absolute -bottom-6 start-0 text-sm text-gray-500 dark:text-gray-400">0 h</span>
-          <span class="absolute -bottom-6 end-0 text-sm text-gray-500 dark:text-gray-400" id="maxHour">8h</span>
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Config</title>
+      <link rel="stylesheet" href="src/style/back.css">
+  </head>
+  <body>
+    <div id="statusOffLine" style="display: none">Voce nao esta conecatado</div>
+    <div class="min-h-screen bg-gray-900 font-sans">
+      <div class="container mx-20 flex flex-row">
+        <div class="basis-1/2">
+          <h1 class="mb-6 mt-6 text-3xl font-black dark:text-white">Cadastro de Atividades</h1>
+    
+          <label for="" class="dark:text-white">Tempo total disponivel para todas as atividades: </label>
+          <input type="number" id="inputTotal" value="8" class="mb-7 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500" />
+    
+          <label for="" class="dark:text-white">Titulo da atividade:</label>
+          <input type="text" id="description" class="mb-8 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500" />
+    
+          <label for="" class="dark:text-white">Tempo Maximo da atividade: <span class="me-2 ms-2 rounded bg-blue-100 px-2.5 py-0.5 font-semibold text-blue-800 dark:bg-blue-200 dark:text-blue-800" id="rangeValue">00:00h</span></label>
+          <div class="relative mb-6">
+            <input id="barId" type="range" value="0" step="0.1" min="0" max="8" class="h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 dark:bg-gray-700"/>
+            <span class="absolute -bottom-6 start-0 text-sm text-gray-500 dark:text-gray-400">0 h</span>
+            <span class="absolute -bottom-6 end-0 text-sm text-gray-500 dark:text-gray-400" id="maxHour">8h</span>
+          </div>
+          <div class="mt-14 flex justify-center">
+            <button type="button" id="newTask" class="mb-2 me-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Cadastrar Atividade</button>
+          </div>
+          
         </div>
-  
-        <div class="mt-14 flex justify-center">
-          <button type="button" id="criarTask" class="mb-2 me-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Cadastrar Atividade</button>
+    
+        <div class="ml-16 basis-1/2">
+          <h1 class="mb-6 mt-6 text-3xl font-black dark:text-white">Lista de atividades</h1>
+          <label class="text-white">Tempo total alocado</label>
+          <div class="w-full rounded-full bg-gray-200 dark:bg-gray-700 mb-2">
+            <div class="rounded-full bg-green-500 p-0.5 text-center text-xs font-medium leading-none text-blue-100" id="totalBar" style="width: 0%">0%</div>
+          </div>
+          <label class="text-white">Tempo Utilizado</label>
+          <div class="w-full rounded-full bg-gray-200 dark:bg-gray-700 mb-2">
+            <div class="rounded-full bg-blue-500 p-0.5 text-center text-xs font-medium leading-none text-blue-100" id="totalUsed" style="width: 0%">0%</div>
+          </div>
+            <label class="text-white">Tempo gasto em pausas</label>
+          <div class="w-full rounded-full bg-gray-200 dark:bg-gray-700 ">
+            <div class="rounded-full bg-orange-500 p-0.5 text-center text-xs font-medium leading-none text-blue-100" id="totalPause" style="width: 0%">0%</div>
+          </div>
+    
+          <div class="mb-5 mt-5 flex items-center justify-center rounded-md shadow-sm" role="group">
+            <button type="button" onclick="window.location.reload();" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-s-lg hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:text-white dark:hover:bg-gray-700 dark:focus:ring-blue-500 dark:focus:text-white">
+              <svg class="me-2 h-3 w-3 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.651 7.65a7.131 7.131 0 0 0-12.68 3.15M18.001 4v4h-4m-7.652 8.35a7.13 7.13 0 0 0 12.68-3.15M6 20v-4h4" />
+              </svg>
+              Atualizar
+            </button>
+            <button type="button" id="btPauseAll" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-900 bg-white border-t border-b border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:text-white dark:hover:bg-gray-700 dark:focus:ring-blue-500 dark:focus:text-white">
+              <svg class="me-2 h-3 w-3 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M7 5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7Z" />
+              </svg>
+              Parar
+            </button>
+            <button type="button" id="btCleaar" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-e-lg hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:text-white dark:hover:bg-gray-700 dark:focus:ring-blue-500 dark:focus:text-white">
+              <svg class="me-2 h-3 w-3 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 9-6 6m0-6 6 6m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+              Nova lista
+            </button>
+          </div>
+          <div class="relative mt-10 overflow-x-auto shadow-md sm:rounded-lg">
+            <table class="w-full text-left text-sm text-gray-500 rtl:text-right dark:text-gray-400">
+              <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+                <tr>
+                  <th scope="col" class="p-4"></th>
+                  <th scope="col" class="px-6 py-3">Titulo</th>
+                  <th scope="col" class="px-6 py-3 text-green-500">Alocado</th>
+                  <th scope="col" class="px-6 py-3">Tempo/pausa</th>
+                  <th scope="col" class="px-6 py-3">excluir</th>
+                </tr>
+              </thead>
+              <tbody id="tasks">
+<tr class="border-b bg-white hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-600 dark:bg-gray-800"><td class="w-4 p-4">
+                    <div class="flex items-center">
+                      <input type="checkbox" data-check="0" class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-800">
+                    </div>
+                  </td>
+                  <th scope="row" class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white">Tomar Banho</th>
+            <td class="px-6 py-4">
+                   <div class="mx-0 h-5 w-full rounded bg-gray-200 dark:bg-gray-700">
+                      <div class="h-5 rounded bg-green-500" style="width: 5%"></div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4"> <span class="text-blue-500"> 00:24:01h</span>/  <span class="text-orange-500">00:15:58h</span> </td>
+                  <td class="px-6 py-4">
+                  
+                  
+                    <button type="button" data-remove="0" class="clickRemove text-red-500 hover:text-white focus:outline-none font-medium  text-sm p-2.5 text-center inline-flex items-center dark:hover:text-white">
+
+                    <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24">
+                      <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"></path>
+                    </svg>                    
+                              
+                    <span class="sr-only">Excluir</span>
+                  </button>
+                  </td></tr>
+
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
+    </div> 
+  </body>
   
-      <div class="ml-16 basis-1/2">
-        <h1 class="mb-6 mt-6 text-3xl font-black dark:text-white">Lista de atividades</h1>
-  
-        <div class="w-full rounded-full bg-gray-200 dark:bg-gray-700">
-          <div class="rounded-full bg-blue-600 p-0.5 text-center text-xs font-medium leading-none text-blue-100" id="totalBar" style="width: 0%">0%</div>
-        </div>
-  
-        <div class="mb-5 mt-5 flex items-center justify-center rounded-md shadow-sm" role="group">
-          <button type="button" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-s-lg hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:text-white dark:hover:bg-gray-700 dark:focus:ring-blue-500 dark:focus:text-white">
-            <svg class="me-2 h-3 w-3 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.651 7.65a7.131 7.131 0 0 0-12.68 3.15M18.001 4v4h-4m-7.652 8.35a7.13 7.13 0 0 0 12.68-3.15M6 20v-4h4" />
-            </svg>
-            Atualizar
-          </button>
-          <button type="button" id="btPauseAll" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-900 bg-white border-t border-b border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:text-white dark:hover:bg-gray-700 dark:focus:ring-blue-500 dark:focus:text-white">
-            <svg class="me-2 h-3 w-3 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M7 5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7Z" />
-            </svg>
-            Parar
-          </button>
-          <button type="button" id="btCleaar" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-e-lg hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:text-white dark:hover:bg-gray-700 dark:focus:ring-blue-500 dark:focus:text-white">
-            <svg class="me-2 h-3 w-3 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 9-6 6m0-6 6 6m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-            </svg>
-            Remover
-          </button>
-        </div>
-        <div class="relative mt-10 overflow-x-auto shadow-md sm:rounded-lg">
-          <table class="w-full text-left text-sm text-gray-500 rtl:text-right dark:text-gray-400">
-            <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
-              <tr>
-                <th scope="col" class="p-4"></th>
-                <th scope="col" class="px-6 py-3">Titulo</th>
-                <th scope="col" class="px-6 py-3 text-blue-500">Progresso</th>
-                <th scope="col" class="px-6 py-3">Tempo</th>
-                <th scope="col" class="px-6 py-3">excluir</th>
-              </tr>
-            </thead>
-            <tbody id="tasks">
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>     
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/src/js/back.js"></script>
+  </html>   
 </body>
 
 <script src="/socket.io/socket.io.js"></script>

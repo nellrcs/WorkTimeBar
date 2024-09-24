@@ -1,11 +1,13 @@
-import Progress, {convertSecondsToHour, convertFloatToHous, convertSeconds} from './Progress.class.js';
+import Progress, {convertSecondsToHour, convertFloatToHous, convertFloatToSeconds} from './Progress.class.js';
 
 var socket = io();
-const CRIARTASK = document.getElementById("criarTask");
+const NEWTASK = document.getElementById("newTask");
 const BARID = document.getElementById("barId");
 const DESCRIPTION = document.getElementById("description");
 const TASKS = document.getElementById("tasks");
 const TOTALBAR = document.getElementById("totalBar");
+const TOTALPAUSE = document.getElementById("totalPause");
+const TOTALUSED = document.getElementById("totalUsed");
 const BTCLEAR = document.getElementById("btCleaar");
 const INPUTTOTAL = document.getElementById("inputTotal");
 const MAXHOUR = document.getElementById("maxHour"); 
@@ -18,21 +20,21 @@ var usedValue = 0.0;
   
 INPUTTOTAL.value = maxValueVar;
 
-INPUTTOTAL.oninput = (e) => {
-  setMaxbar(e.target.value);
+INPUTTOTAL.oninput = () => {
+  setMaxbar();
 }
 
 BARID.oninput = (e) => {
   setRangeValue(e.target.value)
 }
 
-CRIARTASK.onclick = () => {
+NEWTASK.onclick = () => {
   if(parseFloat(BARID.value) > 0){
     let progress = new Progress();
     progress.id=Date.now().toString(16),
     progress.title=DESCRIPTION.value,
     progress.totalTimeFloat=BARID.value,
-    progress.totalTimeSeconds=convertSeconds(BARID.value),
+    progress.totalTimeSeconds=convertFloatToSeconds(BARID.value),
     progress.totalProgress=0,
     progress.totalTimePause=0,
     progress.active=false
@@ -76,32 +78,40 @@ function updataDataAllData(){
 }
   
   function listCreate(){
-    let tempoTotal = 0;
+    let totalTime = 0;
+    let totalPauseTime = 0;
+    let totalUsed = 0;
     TASKS.innerHTML = "";
     if(localStorage.getItem("tarefas").length > 1){
       taskList = JSON.parse(localStorage.getItem("tarefas"));
       for (var i = 0; i < taskList.length; i++) {
-        tempoTotal = tempoTotal + parseFloat(taskList[i].totalTimeFloat);
+        totalTime = totalTime + parseFloat(taskList[i].totalTimeFloat);
+        totalPauseTime = totalPauseTime + taskList[i].totalTimePause;
+        totalUsed = totalUsed + taskList[i].totalProgress;
         TASKS.appendChild(itemTr(i));
       }
     };
-    updateBar(tempoTotal);
+    updateBar(totalTime,totalPauseTime,totalUsed);
   };
-  
-  function updateBar(tempoTotal){
-    usedValue = tempoTotal;
-    
-    if(usedValue >= maxValueVar){
+
+  function updateBar(totalTime,totalPauseTime,totalUsed){
+
+    if(totalTime >= maxValueVar){
       BARID.disabled = true;
-      CRIARTASK.disabled = true;
+      NEWTASK.disabled = true;
     }else{
-      BARID.max = maxValueVar - usedValue;
+      BARID.max = maxValueVar - totalTime;
       BARID.disabled = false;
-      CRIARTASK.disabled = false;
+      NEWTASK.disabled = false;
     }
-    INPUTTOTAL.min = usedValue;
+    INPUTTOTAL.min = totalTime;
     
-    var newValue = parseInt((usedValue * 100) / maxValueVar);
+    var newValue = parseInt((totalTime * 100) / maxValueVar);
+    console.log(maxValueVar);
+    if(isNaN(newValue)){
+      newValue = 0;
+    }
+    
     if(newValue > 100){
       TOTALBAR.value = 100;
       TOTALBAR.innerText = "100%";
@@ -111,6 +121,38 @@ function updataDataAllData(){
       TOTALBAR.innerText = newValue + "%";
       TOTALBAR.style.width = newValue + "%";
     }
+
+    let pausa = parseInt((100 *  totalPauseTime) / convertFloatToSeconds(totalTime));
+
+    if(isNaN(pausa)){
+      pausa = 0;
+    }
+
+    if(pausa > 100){
+      TOTALPAUSE.value = 100;
+      TOTALPAUSE.innerText = "100%";
+      TOTALPAUSE.style.width =  "100%";
+    }else{
+      TOTALPAUSE.value = pausa;
+      TOTALPAUSE.innerText = pausa + "%";
+      TOTALPAUSE.style.width = pausa + "%";
+    }
+
+    let used = parseInt((100 * totalUsed )/ convertFloatToSeconds(totalTime));
+    if(isNaN(used)){
+      used = 0;
+    }
+    if(used > 100){
+      TOTALUSED.value = 100;
+      TOTALUSED.innerText = "100%";
+      TOTALUSED.style.width =  "100%";
+    }else{
+      TOTALUSED.value = used;
+      TOTALUSED.innerText = used + "%";
+      TOTALUSED.style.width = used + "%";
+    }
+
+
   };
 
     function removeArray(i){
@@ -131,8 +173,8 @@ function updataDataAllData(){
     }
 
     function setMaxbar(){
-      listCreate();
       maxValueVar = INPUTTOTAL.value;
+      listCreate();
       BARID.max = maxValueVar - usedValue;
       MAXHOUR.innerText = parseInt(BARID.max) + "h"; 
     }
@@ -162,21 +204,26 @@ function updataDataAllData(){
     let sPause = convertSecondsToHour(item.totalTimeSeconds - item.totalTimePause);
 
     var tr = document.createElement('tr');
+    if(item.active){
+      tr.classList.add('animate-pulse');
+    }
+
     tr.classList.add('border-b','bg-white','hover:bg-gray-50','dark:border-gray-700','dark:hover:bg-gray-600','dark:bg-gray-800');
+
     tr.innerHTML = ( `
         
                   <td class="w-4 p-4">
                     <div class="flex items-center">
-                      <input type="checkbox" data-check='${i}' class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-800" ${item.active ? ' checked' : '' }/>
+                      <input type="checkbox" data-check='${i}' class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-800 " ${item.active ? ' checked' : '' }/>
                     </div>
                   </td>
                   <th scope="row" class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white">${item.title}</th>
             <td class="px-6 py-4">
                    <div class="mx-0 h-5 w-full rounded bg-gray-200 dark:bg-gray-700">
-                      <div class="h-5 rounded bg-blue-500" style="width: ${tempo}%"></div>
+                      <div class="h-5 rounded bg-green-500" style="width: ${tempo}%"></div>
                     </div>
                   </td>
-                  <td class="px-6 py-4"> <span class="text-blue-500"> ${sPlay}</span>/  <span class="text-white-500">${sPause}</span> </td>
+                  <td class="px-6 py-4"> <span class="text-blue-500"> ${sPlay}</span>/  <span class="text-orange-500">${sPause}</span> </td>
                   <td class="px-6 py-4">
                   </button>
                   
@@ -203,6 +250,40 @@ tr.querySelector("[data-check='"+i+"']").addEventListener('click',function () {
 return tr
 }
 
+function nextItemList(){
+
+  let active = 0;
+  let totalIntens =  taskList.length;
+  for(var i = 0; i < totalIntens;i++)
+  {
+    if(taskList[i].active === true){
+      active = i + 1;
+      if(active > (totalIntens - 1) ){
+        active = 0;
+      }
+      
+    }
+  } 
+  setCheckActive(active);
+}
+
+function backItemList(){
+
+  let totalIntens =  taskList.length;
+  let active = 0;
+  for(var i = 0; i < totalIntens;i++)
+  {
+    if(taskList[i].active === true){
+      active = i - 1;
+      if(active < 0){
+        active = totalIntens - 1;
+      } 
+    }
+  } 
+  setCheckActive(active);
+}
+
+
 socket.on('update', (arg)=>{
   taskList.map(tarefa => { 
     if(tarefa.id === arg.id){ 
@@ -214,6 +295,15 @@ socket.on('update', (arg)=>{
   updataDataAllData();
   listCreate();
 });
+
 socket.on('exit', (arg)=>{
   STATUSOFFLINE.style.display = "block";
+});
+
+
+socket.on('next', (arg)=>{
+  nextItemList();
+});
+socket.on('back', (arg)=>{
+  backItemList();
 });

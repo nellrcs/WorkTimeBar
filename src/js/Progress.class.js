@@ -40,7 +40,7 @@ export function convertFloatToHous(time){
     return  {"tempo": hour + "h = " + time};
 }
 
-export  function convertSeconds(time){
+export  function convertFloatToSeconds(time){
     return parseInt(((time)*60)*60);
 }
 

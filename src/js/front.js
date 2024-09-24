@@ -2,10 +2,8 @@ import Progress, {convertSecondsToHour, barPercentage} from './Progress.class.js
 const {ipcRenderer} = require('electron');
 
 var control = document.getElementById("control");
-//control.style.display = 'none';
 var serverMsg = document.getElementById("serverMsg");
 var activityTitle = document.getElementById("activityTitle");
-//var body = document.getElementById('main');
 var barraAtual = document.getElementById('barraAtual');
 var play = document.getElementById('play');
 var pause = document.getElementById('pause');
@@ -13,6 +11,8 @@ var runTime = document.getElementById('runTime');
 var waitingTime = document.getElementById('waitingTime');
 var timeStopCount = document.getElementById('timeStopCount');
 var exitApp = document.getElementById('exitApp');
+var btNext = document.getElementById('btNext');
+var btBack = document.getElementById('btBack');
 var contador = false;
 var stopContador = false;
 var backupProgress = 0;
@@ -26,11 +26,19 @@ exitApp.onclick = () => {
   ipcRenderer.send('exit', {});
 }
 
+btNext.onclick = () => {
+  ipcRenderer.send('next', {});
+}
+
+btBack.onclick = () => {
+  ipcRenderer.send('back', {});
+}
+
 ipcRenderer.on('instuctions', (event, arg) => {
-  exitApp.style.display = 'inline-flex'; 
+  
   objbarra = new Progress();
   endCountBar();
-
+  viewStatus(true);
   objbarra.id = arg.id;
   objbarra.title = arg.title;
   objbarra.totalTimeSeconds = arg.totalTimeSeconds;
@@ -62,6 +70,17 @@ control.addEventListener("click", (e) => {
   objbarra.active = n;
 });
 
+function viewStatus(status = false){
+  if(status){
+    document.getElementById('on').classList.remove('hidden');
+    document.getElementById('off').classList.add('hidden');
+    exitApp.style.display = 'inline-flex'; 
+    return;
+  }
+  document.getElementById('off').classList.remove('hidden');
+  document.getElementById('on').classList.add('hidden');
+}
+
 function criarBarra(){ 
     play.style.display = "block";
     pause.style.display = "none";
@@ -72,29 +91,24 @@ function criarBarra(){
     activityTitle.innerHTML = objbarra.title;
 }
 
-function playBarras(){ 
-  
-     play.style.display = "none";
-     pause.style.display = "block";
-     timeStopCount.style.display = "none";
-
-     if(objbarra.totalProgress <= 0){
-      objbarra.lastTimestempPlay = (Date.now() - (backupProgress * 1000)) + ( 1000 * objbarra.totalTimeSeconds );
-     }
-
-     endCountBar();
-     contador = setInterval(function() {   
-        //let barraAtual = document.getElementById('pb');
-
-       if(objbarra.totalProgress >= objbarra.totalTimeSeconds){
-         pauseBar();
-         control.disabled = true;
-       }else{
-         objbarra.totalProgress = (objbarra.totalTimeSeconds - Math.ceil((objbarra.lastTimestempPlay - Date.now())/1000));
-         barraAtual.style.width = barPercentage(objbarra.totalProgress,objbarra.totalTimeSeconds) + "%";
-         runTime.textContent = convertSecondsToHour(objbarra.totalProgress);
-         ipcRenderer.send('status', objbarra);
-       }      
+function playBarras(){
+    play.style.display = "none";
+    pause.style.display = "block";
+    timeStopCount.style.display = "none";
+    if(objbarra.totalProgress <= 0){
+    objbarra.lastTimestempPlay = (Date.now() - (backupProgress * 1000)) + ( 1000 * objbarra.totalTimeSeconds );
+    }
+    endCountBar();
+    contador = setInterval(function() {   
+      if(objbarra.totalProgress >= objbarra.totalTimeSeconds){
+        pauseBar();
+        control.disabled = true;
+      }else{
+        objbarra.totalProgress = (objbarra.totalTimeSeconds - Math.ceil((objbarra.lastTimestempPlay - Date.now())/1000));
+        barraAtual.style.width = barPercentage(objbarra.totalProgress,objbarra.totalTimeSeconds) + "%";
+        runTime.textContent = convertSecondsToHour(objbarra.totalProgress);
+        ipcRenderer.send('status', objbarra);
+      }      
   }, 1000);
 }
 
