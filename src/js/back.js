@@ -49,7 +49,8 @@ NEWTASK.onclick = () => {
   
 BTCLEAR.onclick = () => {
   if(confirm("Deseja remover todos os itens da lista?")){
-    localStorage.clear();
+    stopAll();
+    window.localStorage.clear();
     taskList = [];
     listCreate();
   }
@@ -107,7 +108,6 @@ function updataDataAllData(){
     INPUTTOTAL.min = totalTime;
     
     var newValue = parseInt((totalTime * 100) / maxValueVar);
-    console.log(maxValueVar);
     if(isNaN(newValue)){
       newValue = 0;
     }
@@ -151,8 +151,6 @@ function updataDataAllData(){
       TOTALUSED.innerText = used + "%";
       TOTALUSED.style.width = used + "%";
     }
-
-
   };
 
     function removeArray(i){
@@ -204,12 +202,7 @@ function updataDataAllData(){
     let sPause = convertSecondsToHour(item.totalTimeSeconds - item.totalTimePause);
 
     var tr = document.createElement('tr');
-    if(item.active){
-      tr.classList.add('animate-pulse');
-    }
-
     tr.classList.add('border-b','bg-white','hover:bg-gray-50','dark:border-gray-700','dark:hover:bg-gray-600','dark:bg-gray-800');
-
     tr.innerHTML = ( `
         
                   <td class="w-4 p-4">
@@ -223,11 +216,11 @@ function updataDataAllData(){
                       <div class="h-5 rounded bg-green-500" style="width: ${tempo}%"></div>
                     </div>
                   </td>
-                  <td class="px-6 py-4"> <span class="text-blue-500"> ${sPlay}</span>/  <span class="text-orange-500">${sPause}</span> </td>
+                  <td class="px-6 py-4 "> <span class="text-blue-500"> ${sPlay}</span>/  <span class="text-gray-300">${sPause}</span> </td>
                   <td class="px-6 py-4">
                   </button>
                   
-                    <button type="button" data-remove='${i}' class="clickRemove text-red-500 hover:text-white focus:outline-none font-medium  text-sm p-2.5 text-center inline-flex items-center dark:hover:text-white">
+                    <button type="button" data-remove='${i}' class="clickRemove text-white hover:text-red-500 focus:outline-none font-medium  text-sm p-2.5 text-center inline-flex items-center dark:hover:text-red-500">
 
                     <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24">
                       <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"/>
@@ -252,35 +245,47 @@ return tr
 
 function nextItemList(){
 
-  let active = 0;
-  let totalIntens =  taskList.length;
-  for(var i = 0; i < totalIntens;i++)
-  {
-    if(taskList[i].active === true){
-      active = i + 1;
-      if(active > (totalIntens - 1) ){
-        active = 0;
+  try {
+    let active = 0;
+    let totalIntens =  taskList.length;
+    console.log(totalIntens);
+    for(var i = 0; i < totalIntens;i++)
+    {
+      if(taskList[i].active === true){
+        active = i + 1;
+        if(active > (totalIntens - 1) ){
+          active = 0;
+        }
+        
       }
-      
-    }
-  } 
-  setCheckActive(active);
+    } 
+    setCheckActive(active);
+  } catch (error) {
+    console.log(error)
+  }
+
 }
 
 function backItemList(){
 
-  let totalIntens =  taskList.length;
-  let active = 0;
-  for(var i = 0; i < totalIntens;i++)
-  {
-    if(taskList[i].active === true){
-      active = i - 1;
-      if(active < 0){
-        active = totalIntens - 1;
-      } 
-    }
-  } 
-  setCheckActive(active);
+  try {
+    let totalIntens =  taskList.length;
+    let active = 0;
+    for(var i = 0; i < totalIntens;i++)
+    {
+      if(taskList[i].active === true){
+        active = i - 1;
+        if(active < 0){
+          active = totalIntens - 1;
+        } 
+      }
+    } 
+    setCheckActive(active);
+  } catch (error) {
+    console.log(error)
+  }
+
+
 }
 
 
@@ -289,8 +294,8 @@ socket.on('update', (arg)=>{
     if(tarefa.id === arg.id){ 
       tarefa.totalProgress = arg.totalProgress; 
       tarefa.totalTimePause = arg.totalTimePause;
-      console.log("UPDATE:");
-      console.log(tarefa);
+
+
     }});
   updataDataAllData();
   listCreate();

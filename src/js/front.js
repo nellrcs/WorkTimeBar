@@ -7,7 +7,10 @@ var activityTitle = document.getElementById("activityTitle");
 var barraAtual = document.getElementById('barraAtual');
 var play = document.getElementById('play');
 var pause = document.getElementById('pause');
+var finish = document.getElementById('finish');
+var lock = document.getElementById('lock');
 var runTime = document.getElementById('runTime');
+var countTime = document.getElementById('countTime');
 var waitingTime = document.getElementById('waitingTime');
 var timeStopCount = document.getElementById('timeStopCount');
 var exitApp = document.getElementById('exitApp');
@@ -18,9 +21,8 @@ var stopContador = false;
 var backupProgress = 0;
 var objbarra = null;
 
-play.style.display = "block";
-pause.style.display = "none";
-timeStopCount.style.display = "none";
+play.classList.remove('hidden');
+timeStopCount.classList.add('hidden');
 
 exitApp.onclick = () => {
   ipcRenderer.send('exit', {});
@@ -54,8 +56,9 @@ ipcRenderer.on('instuctions', (event, arg) => {
 
 ipcRenderer.on('stop', (event, arg) => {
   objbarra = new Progress();
-  endCountBar()
-
+  window.localStorage.clear();
+  endCountBar();
+  viewStatus(false);
 });
 
 control.addEventListener("click", (e) => {
@@ -74,7 +77,6 @@ function viewStatus(status = false){
   if(status){
     document.getElementById('on').classList.remove('hidden');
     document.getElementById('off').classList.add('hidden');
-    exitApp.style.display = 'inline-flex'; 
     return;
   }
   document.getElementById('off').classList.remove('hidden');
@@ -82,19 +84,29 @@ function viewStatus(status = false){
 }
 
 function criarBarra(){ 
-    play.style.display = "block";
-    pause.style.display = "none";
-    timeStopCount.style.display = "none";
+    barraAtual.classList.remove('animate-pulse');
+    countTime.classList.remove('hidden');
+    play.classList.remove('hidden');
+    pause.classList.add('hidden');
+    lock.classList.add('hidden');
+    finish.classList.add('hidden');
+
+    timeStopCount.classList.add("hidden");
     control.disabled = false;
     runTime.textContent = convertSecondsToHour(backupProgress);
     barraAtual.style.width = barPercentage(backupProgress,objbarra.totalTimeSeconds) + "%";
     activityTitle.innerHTML = objbarra.title;
 }
 
+
 function playBarras(){
-    play.style.display = "none";
-    pause.style.display = "block";
-    timeStopCount.style.display = "none";
+    
+    play.classList.add("hidden");
+    pause.classList.remove("hidden");
+    lock.classList.add("hidden");
+    finish.classList.add('hidden');
+    
+    timeStopCount.classList.add("hidden");
     if(objbarra.totalProgress <= 0){
     objbarra.lastTimestempPlay = (Date.now() - (backupProgress * 1000)) + ( 1000 * objbarra.totalTimeSeconds );
     }
@@ -115,12 +127,20 @@ function playBarras(){
 function stopCountBarra(){
     let totalTimePauseBkup = objbarra.totalTimePause;
     objbarra.lastTimestempPause = Date.now();
-    timeStopCount.style.display = "inline-flex";
+    timeStopCount.classList.remove("hidden");
     waitingTime.textContent = "00:00:00";
 
      stopContador = setInterval(function() {
-       if( (parseInt(objbarra.totalProgress) >= objbarra.totalTimeSeconds )){            
-         endCountBar();
+       if( (parseInt(objbarra.totalProgress) >= objbarra.totalTimeSeconds )){
+          barraAtual.classList.add('animate-pulse');
+          countTime.classList.add('hidden'); 
+          finish.classList.remove('hidden'); 
+          lock.classList.remove('hidden');
+          play.classList.add('hidden');   
+          pause.classList.add('hidden'); 
+          timeStopCount.classList.add("hidden");
+          ipcRenderer.send('finish', objbarra);
+          endCountBar();
        }else{  
         
         let iTime = parseInt((Date.now() - objbarra.lastTimestempPause) / 1000);
@@ -134,6 +154,7 @@ function stopCountBarra(){
 }
 
 function endCountBar(){
+
   clearInterval(contador);
   clearInterval(stopContador);
   contador = false;
@@ -141,16 +162,16 @@ function endCountBar(){
 }
 
 function pauseBar(){
+  play.classList.remove('hidden');
+  pause.classList.add('hidden');
+  timeStopCount.classList.add("hidden");
 
-  play.style.display = "block";
-  pause.style.display = "none";
-  timeStopCount.style.display = "none";
-  
   endCountBar();
   stopCountBarra();
 }
 
 ipcRenderer.send('online', '1');
+
 ipcRenderer.on('server', (event, arg) => {
   serverMsg.innerHTML = arg;
 });

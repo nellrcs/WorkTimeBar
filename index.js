@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, Notification  } = require('electron');
 var http = require('http');
 var fs = require('fs');
+
 //var Crud = require('./src/js/Crud')
 //var db = new Crud(__dirname);
 
@@ -11,15 +12,16 @@ let packege = {};
 let globalEvent = null;
 
 const PORT = process.env.PORT || 8080;
+const env = process.env.NODE_ENV || 'development';
 
 async function createCheckWindow () {
   childWindow = new BrowserWindow({
     
-    width:450, 
-    height:104,
-    minWidth: 450,
-    minHeight: 104,
-    maxHeight: 104,
+    width:500, 
+    height:75,
+    minWidth: 330,
+    minHeight: 75,
+    maxHeight: 75,
     autoHideMenuBar: true,
 
     titleBarStyle: 'customButtonsOnHover',
@@ -30,9 +32,7 @@ async function createCheckWindow () {
     fullscreenable: false,
     maximizable: false,
     
-  
     webPreferences: {
-    
       nodeIntegration: true,
       contextIsolation: false
     }
@@ -45,7 +45,6 @@ async function createCheckWindow () {
   }); 
 
   //childWindow.webContents.openDevTools();
-  //{ parent: mainWindow, modal: true, show: false,  frame: false ,  width:450,  height:300}
 }  
 
 app.whenReady().then(() => {
@@ -76,25 +75,36 @@ var server = http.createServer(function (req, res) {
     res.writeHead(200, {'Content-Type': 'text/css; charset=utf-8'});
     res.end(fs.readFileSync(__dirname + req.url));
   }
+  else if(req.url === '/src/favicon.ico'){
+    res.writeHead(200, {'Content-Type': 'image/x-icon'});
+    res.end(fs.readFileSync(__dirname + req.url));
+  }
+  else if(req.url === '/src/img/logotipo.png'){
+    res.writeHead(200, {'Content-Type': 'image/png'});
+    res.end(fs.readFileSync(__dirname + req.url));
+  }
   else{
     res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
     res.end(fs.readFileSync('config.html'));
   }
 });
 
-
 server.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
 
 const io = socketIo(server);
-
+var connectCounter = 0;
 io.on('connection', (socket) => {
 
-  console.log('Um usuario se conectou');
+  connectCounter++; 
+  if(connectCounter > 1){
+    socket.emit('exit', {});
+    process.exit();
+  }
 
-  socket.on('disconnect', () => {
-    console.log('Usuario desconectado');
+  socket.on('disconnect', function() { 
+    connectCounter--; 
   });
 
   socket.on('evento', (msg) => {
@@ -125,14 +135,21 @@ io.on('connection', (socket) => {
     socket.emit('exit', arg);
     process.exit();
   });
+
+  ipcMain.on('finish',function(event,arg){
+    showNotification(arg);
+  })
   
 });
 
-
 ipcMain.on('online', function(event, arg) {
   globalEvent = event;
-  event.sender.send('server', `Acesse <a class="text-blue-500" href="#">http://locahost:${PORT}</a> para criar uma nova atividade`);
+  event.sender.send('server', `Acesse <strong>http://locahost:${PORT}</strong> para selecionar uma nova atividade`);
 });
 
+
+function showNotification(arg){
+  new Notification({ title: 'Atividade concluída', body: `A atividade ${arg.title} foi concluída` }).show()
+}
 
 
