@@ -19,7 +19,7 @@ async function createCheckWindow () {
     
     width:500, 
     height:75,
-    minWidth: 330,
+    minWidth: 360,
     minHeight: 75,
     maxHeight: 75,
     autoHideMenuBar: true,
@@ -71,6 +71,10 @@ var server = http.createServer(function (req, res) {
     res.writeHead(200, {'Content-Type': 'application/javascript; charset=utf-8'});
     res.end(fs.readFileSync(__dirname + req.url));
   }
+  else if(req.url === '/src/js/views.js'){
+    res.writeHead(200, {'Content-Type': 'application/javascript; charset=utf-8'});
+    res.end(fs.readFileSync(__dirname + req.url));
+  }
   else if(req.url === '/src/style/back.css'){
     res.writeHead(200, {'Content-Type': 'text/css; charset=utf-8'});
     res.end(fs.readFileSync(__dirname + req.url));
@@ -85,7 +89,7 @@ var server = http.createServer(function (req, res) {
   }
   else{
     res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
-    res.end(fs.readFileSync('config.html'));
+    res.end(fs.readFileSync(__dirname + '/src/painel.html'));
   }
 });
 
@@ -104,7 +108,10 @@ io.on('connection', (socket) => {
   }
 
   socket.on('disconnect', function() { 
-    connectCounter--; 
+    connectCounter--;
+    if(connectCounter <= 0){
+      process.exit();
+    }
   });
 
   socket.on('evento', (msg) => {

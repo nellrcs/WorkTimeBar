@@ -1,4 +1,5 @@
 import Progress, {convertSecondsToHour, convertFloatToHous, convertFloatToSeconds} from './Progress.class.js';
+import {itemTable} from './views.js';
 
 var socket = io();
 const NEWTASK = document.getElementById("newTask");
@@ -18,6 +19,18 @@ var taskList = [];
 var maxValueVar = 8.0;
 var usedValue = 0.0;
   
+const setCheckActive = function(i){
+  setItemActive(i);
+  listCreate();
+}
+
+const removeArray = function(i){
+  taskList.splice(i, 1);
+  localStorage.setItem("tarefas",JSON.stringify(taskList));
+  setMaxbar();
+  socket.emit('stop', {});
+}
+
 INPUTTOTAL.value = maxValueVar;
 
 INPUTTOTAL.oninput = () => {
@@ -38,9 +51,7 @@ NEWTASK.onclick = () => {
     progress.totalProgress=0,
     progress.totalTimePause=0,
     progress.active=false
-    
     updataData(progress);
-
     BARID.value = "0";
     DESCRIPTION.value = "";
     rangeValue.innerText="00:00h = 0";
@@ -78,7 +89,7 @@ function updataDataAllData(){
   localStorage.setItem("tarefas",JSON.stringify(taskList));
 }
   
-  function listCreate(){
+function listCreate(){
     let totalTime = 0;
     let totalPauseTime = 0;
     let totalUsed = 0;
@@ -93,7 +104,7 @@ function updataDataAllData(){
       }
     };
     updateBar(totalTime,totalPauseTime,totalUsed);
-  };
+};
 
   function updateBar(totalTime,totalPauseTime,totalUsed){
 
@@ -153,13 +164,6 @@ function updataDataAllData(){
     }
   };
 
-    function removeArray(i){
-      taskList.splice(i, 1);
-      localStorage.setItem("tarefas",JSON.stringify(taskList));
-      setMaxbar();
-      socket.emit('stop', {});
-    }
- 
     function setItemActive(index){
       taskList.map(tarefa=>tarefa.active=false);
       if(typeof taskList[index] !== "undefined"){
@@ -174,6 +178,8 @@ function updataDataAllData(){
       maxValueVar = INPUTTOTAL.value;
       listCreate();
       BARID.max = maxValueVar - usedValue;
+      console.log("MAXBAR"+maxValueVar);
+      console.log("USEDVAUE"+usedValue);
       MAXHOUR.innerText = parseInt(BARID.max) + "h"; 
     }
     
@@ -181,10 +187,6 @@ function updataDataAllData(){
       rangeValue.innerText =  convertFloatToHous(value).tempo;
     }
 
-    function setCheckActive(i){
-      setItemActive(i);
-      listCreate();
-    }
 
   function stopAll(){
     taskList.map(tarefa=>tarefa.active=false);
@@ -200,47 +202,9 @@ function updataDataAllData(){
     let tempo = parseInt((item.totalTimeFloat * 100) / maxValueVar);
     let sPlay = convertSecondsToHour(item.totalProgress);
     let sPause = convertSecondsToHour(item.totalTimeSeconds - item.totalTimePause);
+    let data = {'item':item,'tempo':tempo,'sPlay':sPlay,'sPause':sPause,'title':item.title,'index':i,'active':item.active};
 
-    var tr = document.createElement('tr');
-    tr.classList.add('border-b','bg-white','hover:bg-gray-50','dark:border-gray-700','dark:hover:bg-gray-600','dark:bg-gray-800');
-    tr.innerHTML = ( `
-        
-                  <td class="w-4 p-4">
-                    <div class="flex items-center">
-                      <input type="checkbox" data-check='${i}' class="h-4 w-4 rounded border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-blue-600 dark:focus:ring-offset-gray-800 " ${item.active ? ' checked' : '' }/>
-                    </div>
-                  </td>
-                  <th scope="row" class="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white">${item.title}</th>
-            <td class="px-6 py-4">
-                   <div class="mx-0 h-5 w-full rounded bg-gray-200 dark:bg-gray-700">
-                      <div class="h-5 rounded bg-green-500" style="width: ${tempo}%"></div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 "> <span class="text-blue-500"> ${sPlay}</span>/  <span class="text-gray-300">${sPause}</span> </td>
-                  <td class="px-6 py-4">
-                  </button>
-                  
-                    <button type="button" data-remove='${i}' class="clickRemove text-white hover:text-red-500 focus:outline-none font-medium  text-sm p-2.5 text-center inline-flex items-center dark:hover:text-red-500">
-
-                    <svg class="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24">
-                      <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"/>
-                    </svg>                    
-                              
-                    <span class="sr-only">Excluir</span>
-                  </button>
-                  </td>
-
-`).trim();
-
-tr.querySelector("[data-remove='"+i+"']").addEventListener('click',function () {
-  removeArray(i)
-});
-
-tr.querySelector("[data-check='"+i+"']").addEventListener('click',function () {
-  setCheckActive(i)
-});
-
-return tr
+    return itemTable(data,setCheckActive,removeArray);
 }
 
 function nextItemList(){
@@ -285,24 +249,21 @@ function backItemList(){
     console.log(error)
   }
 
-
 }
-
 
 socket.on('update', (arg)=>{
   taskList.map(tarefa => { 
     if(tarefa.id === arg.id){ 
       tarefa.totalProgress = arg.totalProgress; 
       tarefa.totalTimePause = arg.totalTimePause;
-
-
     }});
   updataDataAllData();
   listCreate();
 });
 
 socket.on('exit', (arg)=>{
-  STATUSOFFLINE.style.display = "block";
+  STATUSOFFLINE.style.display = "flex";
+  window.location.reload();
 });
 
 
