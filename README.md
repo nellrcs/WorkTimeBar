@@ -1,14 +1,14 @@
-# ![Logo](src/img/logotipo.png)
+# ![Logo](src/favicon.ico) WorkTimeBar
 
 bem vindo ao WorkTimeBar!
 
 ## Componentes
 
-- `front` - Janela sobrepoe todas as outras e mostra o progresso.
+- `front` - Janela que sobrepõem todas as outras e mostra o progresso em tempo real.
 
 ![img2](https://github.com/user-attachments/assets/a2de2475-d1f5-42e3-8a5f-88b95bb3dc0f)
 
-- `painel` - gerencia e cadastra as atividades.
+- `painel` - Gerencia e cadastra as atividades .
 
 ![img1](https://github.com/user-attachments/assets/f1cfb245-849a-4846-abe2-6d3a1a8c254a)
 
