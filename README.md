@@ -19,7 +19,7 @@ bem vindo ao WorkTimeBar!
 
 ## Instalar
 
-linha de comando de comnado:
+linha de comnado:
 
 ```bash
 $ npm install update
@@ -27,7 +27,7 @@ $ npm install update
 
 ## Executar
 
-linha de comando de comnado:
+linha de comnado:
 
 ```bash
 $ npm start
@@ -35,7 +35,7 @@ $ npm start
 
 ## Building
 
-linha de comando de comnado windows:
+linha de comnado windows:
 
 ```bash
 $ npm run package-win
