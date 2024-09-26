@@ -1,4 +1,4 @@
-# ![Logo](src/favicon.ico) WorkTimeBar
+# ![Logo](src/favicon.ico | width=100) WorkTimeBar
 
 bem vindo ao WorkTimeBar!
 
