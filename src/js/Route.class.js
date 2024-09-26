@@ -7,7 +7,7 @@ module.exports = class Route {
          {file:'/src/js/backoff.js',type:'application/javascript; charset=utf-8'},
          {file:'/src/js/Progress.class.js',type:'application/javascript; charset=utf-8'},
          {file:'/src/js/views.js',type:'application/javascript; charset=utf-8'},
-         {file:'/src/style/backoff.css',type:'text/css; charset=utf-8'},
+         {file:'/src/style/main.css',type:'text/css; charset=utf-8'},
          {file:'/src/favicon.ico',type:'image/x-icon'},
          {file:'/src/img/logotipo.png',type:'mage/png'},
          {file:'/src/painel.html',type:'text/html; charset=utf-8'}
