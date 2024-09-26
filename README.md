@@ -1,4 +1,5 @@
-# ![Logo](https://github.com/user-attachments/assets/ffca30f4-a3b4-4aaa-9002-5741fb04d59b) WorkTimeBar
+![Logo](https://github.com/user-attachments/assets/ffca30f4-a3b4-4aaa-9002-5741fb04d59b)
+# WorkTimeBar
 
 bem vindo ao WorkTimeBar!
 
