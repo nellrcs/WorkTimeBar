@@ -49,9 +49,9 @@ ipcRenderer.on('instuctions', (event, arg) => {
   objbarra.active = arg.totalTimePause;
   backupProgress = arg.totalProgress;
 
-  console.log('Recebido');
-  console.log(objbarra);
-  criarBarra();
+
+  createBar();
+
 });
 
 ipcRenderer.on('stop', (event, arg) => {
@@ -83,7 +83,7 @@ function viewStatus(status = false){
   document.getElementById('on').classList.add('hidden');
 }
 
-function criarBarra(){ 
+function createBar(){ 
     barraAtual.classList.remove('animate-pulse');
     countTime.classList.remove('hidden');
     play.classList.remove('hidden');
@@ -96,6 +96,10 @@ function criarBarra(){
     runTime.textContent = convertSecondsToHour(backupProgress);
     barraAtual.style.width = barPercentage(backupProgress,objbarra.totalTimeSeconds) + "%";
     activityTitle.innerHTML = objbarra.title;
+
+    if((parseInt(backupProgress) >= objbarra.totalTimeSeconds )){
+      terminate();
+    }
 }
 
 
@@ -132,15 +136,9 @@ function stopCountBarra(){
 
      stopContador = setInterval(function() {
        if( (parseInt(objbarra.totalProgress) >= objbarra.totalTimeSeconds )){
-          barraAtual.classList.add('animate-pulse');
-          countTime.classList.add('hidden'); 
-          finish.classList.remove('hidden'); 
-          lock.classList.remove('hidden');
-          play.classList.add('hidden');   
-          pause.classList.add('hidden'); 
-          timeStopCount.classList.add("hidden");
-          ipcRenderer.send('finish', objbarra);
+          terminate();
           endCountBar();
+          ipcRenderer.send('finish', objbarra); 
        }else{  
         
         let iTime = parseInt((Date.now() - objbarra.lastTimestempPause) / 1000);
@@ -168,6 +166,16 @@ function pauseBar(){
 
   endCountBar();
   stopCountBarra();
+}
+
+function terminate(){
+  barraAtual.classList.add('animate-pulse');
+  countTime.classList.add('hidden'); 
+  finish.classList.remove('hidden'); 
+  lock.classList.remove('hidden');
+  play.classList.add('hidden');   
+  pause.classList.add('hidden'); 
+  timeStopCount.classList.add("hidden"); 
 }
 
 ipcRenderer.send('online', '1');

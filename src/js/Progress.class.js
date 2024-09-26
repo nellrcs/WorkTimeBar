@@ -32,7 +32,7 @@ export function convertFloatToHous(time){
     }else{
       hour += (`00${Math.floor(time)}`).slice(-2)  + ":";
     }
-    if(time <= 1){
+    if(time < 1){
       hour += (`00${parseInt((parseInt(time*100)*60) / 100)}`).slice(-2);
     }else{  
       hour += (`00${(Math.ceil(time*60) %60)}`).slice(-2);

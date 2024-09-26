@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="src/style/front.css" />
+    <link rel="stylesheet" href="src/style/main.css" />
   </head>
   <body>
     <div class="min-h-screen rounded-2xl border-2 border-r-emerald-50 bg-gray-800 font-sans">
@@ -13,20 +13,20 @@
             <div class=" mb-1 min-w-0 flex-1 text-base font-medium text-white drag">
               <p id="activityTitle" class="truncate">...</p>
             </div>
-            <div class=" mb-2 h-1.5 w-full rounded-full  bg-gray-700">
-              <div id="barraAtual" class="h-1.5 animate-pulse rounded-full bg-gradient-to-br from-pink-500 to-orange-400 hover:bg-gradient-to-bl" style="width: 20%"></div>
+            <div class="drag mb-2 h-1.5 w-full rounded-full bg-gray-700">
+              <div id="barraAtual" class="h-1.5 animate-pulse rounded-full bg-gradient-to-br from-pink-500 to-orange-400 hover:bg-gradient-to-bl" style="width: 100%"></div>
             </div>
 
-            <span id="finish" class=" text-gree-400 me-2 inline-flex hidden animate-bounce items-center justify-center rounded border border-green-400  px-2.5 py-0.5 text-sm font-semibold text-green-600 hover:bg-green-200 bg-gray-700">Finalizado</span>
+            <span id="finish" class="drag text-gree-400 me-2 inline-flex hidden animate-bounce items-center justify-center rounded border border-green-400  px-2.5 py-0.5 text-sm font-semibold text-green-600 hover:bg-green-200 bg-gray-700">Finalizada</span>
 
-            <span id="countTime" class=" inline-flex animate-pulse items-center rounded border border-blue-400  px-2.5 py-0.5 text-xs font-medium  bg-gray-700 text-blue-400">
+            <span id="countTime" class="drag inline-flex animate-pulse items-center rounded border border-blue-400  px-2.5 py-0.5 text-xs font-medium  bg-gray-700 text-blue-400">
               <svg class="me-1.5 h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm3.982 13.982a1 1 0 0 1-1.414 0l-3.274-3.274A1.012 1.012 0 0 1 9 10V6a1 1 0 0 1 2 0v3.586l2.982 2.982a1 1 0 0 1 0 1.414Z" />
               </svg>
               <p id="runTime">00:00:00</p>
             </span>
 
-            <span id="timeStopCount" class=" inline-flex animate-pulse items-center rounded border border-red-400  px-2.5 py-0.5 text-xs font-medium  bg-gray-700 text-red-400">
+            <span id="timeStopCount" class="drag inline-flex animate-pulse items-center rounded border border-red-400  px-2.5 py-0.5 text-xs font-medium  bg-gray-700 text-red-400">
               <svg class=" me-1.5 h-3 w-3  text-red-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                 <path fill-rule="evenodd" d="M8 5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H8Zm7 0a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1Z" clip-rule="evenodd" />
               </svg>

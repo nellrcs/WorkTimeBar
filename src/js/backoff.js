@@ -1,7 +1,6 @@
 import Progress, {convertSecondsToHour, convertFloatToHous, convertFloatToSeconds} from './Progress.class.js';
 import {itemTable} from './views.js';
 
-var socket = io();
 const NEWTASK = document.getElementById("newTask");
 const BARID = document.getElementById("barId");
 const DESCRIPTION = document.getElementById("description");
@@ -15,23 +14,22 @@ const MAXHOUR = document.getElementById("maxHour");
 const PAUSEALL = document.getElementById("btPauseAll");
 const STATUSOFFLINE = document.getElementById("statusOffLine");
 
+var socket = io();
 var taskList = [];
-var maxValueVar = 8.0;
+var maxValueVar = 0;
 var usedValue = 0.0;
   
-const setCheckActive = function(i){
+const setCheckActive = (i) => {
   setItemActive(i);
   listCreate();
 }
 
-const removeArray = function(i){
+const removeArray = (i) => {
   taskList.splice(i, 1);
   localStorage.setItem("tarefas",JSON.stringify(taskList));
   setMaxbar();
   socket.emit('stop', {});
 }
-
-INPUTTOTAL.value = maxValueVar;
 
 INPUTTOTAL.oninput = () => {
   setMaxbar();
@@ -45,7 +43,7 @@ NEWTASK.onclick = () => {
   if(parseFloat(BARID.value) > 0){
     let progress = new Progress();
     progress.id=Date.now().toString(16),
-    progress.title=DESCRIPTION.value,
+    progress.title=DESCRIPTION.value || progress.id,
     progress.totalTimeFloat=BARID.value,
     progress.totalTimeSeconds=convertFloatToSeconds(BARID.value),
     progress.totalProgress=0,
@@ -77,6 +75,10 @@ PAUSEALL.onclick = () => {
   }else{
     listCreate();
   }
+  if(maxValueVar > 0){
+    INPUTTOTAL.value = maxValueVar;
+    setMaxbar();
+  }
 })();
 
 function updataData(tarefa){
@@ -102,12 +104,15 @@ function listCreate(){
         totalUsed = totalUsed + taskList[i].totalProgress;
         TASKS.appendChild(itemTr(i));
       }
+      if(totalTime >= 0 && maxValueVar <= 0){
+        maxValueVar = totalTime;
+      }
     };
     updateBar(totalTime,totalPauseTime,totalUsed);
 };
 
   function updateBar(totalTime,totalPauseTime,totalUsed){
-
+    usedValue = totalTime;
     if(totalTime >= maxValueVar){
       BARID.disabled = true;
       NEWTASK.disabled = true;
@@ -178,14 +183,12 @@ function listCreate(){
       maxValueVar = INPUTTOTAL.value;
       listCreate();
       BARID.max = maxValueVar - usedValue;
-      console.log("MAXBAR"+maxValueVar);
-      console.log("USEDVAUE"+usedValue);
       MAXHOUR.innerText = parseInt(BARID.max) + "h"; 
     }
     
-    function setRangeValue(value){
-      rangeValue.innerText =  convertFloatToHous(value).tempo;
-    }
+  function setRangeValue(value){
+    rangeValue.innerText =  convertFloatToHous(value).tempo;
+  }
 
 
   function stopAll(){
