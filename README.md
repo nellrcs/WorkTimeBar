@@ -9,7 +9,7 @@ bem vindo ao WorkTimeBar!
 
 ## Download WorkTimeBar
 
-- https://github.com/nellrcs/WorkTimeBar/releases/new
+- https://github.com/nellrcs/WorkTimeBar/releases/tag/download
 
 
 ## Instalar
