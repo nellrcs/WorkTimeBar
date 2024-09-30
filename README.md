@@ -1,7 +1,8 @@
 ![Logo](https://github.com/user-attachments/assets/ffca30f4-a3b4-4aaa-9002-5741fb04d59b)
 # WorkTimeBar
 
-bem vindo ao WorkTimeBar!
+Resumidamente, o projeto consiste em uma janela flutuante que sobrepõe todas as outras, apresentando uma barra de progresso e um contador que mostra o tempo da atividade cadastrada.
+No painel, você pode registrar o tempo total disponível para todas as atividades e cadastrar várias delas, distribuindo esse tempo. Além disso, é possível acompanhar seu progresso e ver quanto tempo foi gasto em pausas.
 
 ## Componentes
 
