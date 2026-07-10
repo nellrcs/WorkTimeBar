@@ -3,91 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="src/style/main.css" />
+    <title>WorkTimeBar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   </head>
-  <body>
-    <div class="min-h-screen rounded-2xl border-2 border-r-emerald-50 bg-gray-800 font-sans">
-      <div id="on" class="hidden">
-        <div class="flex items-center space-x-4 rtl:space-x-reverse">
-          <div class="min-w-0 flex-1 pl-4 ">
-            <div class=" mb-1 min-w-0 flex-1 text-base font-medium text-white drag">
-              <p id="activityTitle" class="truncate">...</p>
-            </div>
-            <div class="drag mb-2 h-1.5 w-full rounded-full bg-gray-700">
-              <div id="barraAtual" class="h-1.5 animate-pulse rounded-full bg-gradient-to-br from-pink-500 to-orange-400 hover:bg-gradient-to-bl" style="width: 100%"></div>
-            </div>
-            <span id="finish" class="drag text-gree-400 me-2 inline-flex hidden animate-bounce items-center justify-center rounded border border-green-400  px-2.5 py-0.5 text-sm font-semibold text-green-600 hover:bg-green-200 bg-gray-700">Finalizada</span>
-
-            <span id="countTime" class="drag inline-flex animate-pulse items-center rounded border border-blue-400  px-2.5 py-0.5 text-xs font-medium  bg-gray-700 text-blue-400">
-              <svg class="me-1.5 h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm3.982 13.982a1 1 0 0 1-1.414 0l-3.274-3.274A1.012 1.012 0 0 1 9 10V6a1 1 0 0 1 2 0v3.586l2.982 2.982a1 1 0 0 1 0 1.414Z" />
-              </svg>
-              <p id="runTime">00:00:00</p>
-            </span>
-
-            <span id="timeStopCount" class="drag inline-flex animate-pulse items-center rounded border border-red-400  px-2.5 py-0.5 text-xs font-medium  bg-gray-700 text-red-400">
-              <svg class=" me-1.5 h-3 w-3  text-red-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                <path fill-rule="evenodd" d="M8 5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H8Zm7 0a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1Z" clip-rule="evenodd" />
-              </svg>
-
-              <p id="waitingTime">-00:00:00</p>
-            </span>
-
-            <div class="float-end me-2 inline-flex rounded-md shadow-sm" role="group">
-              <button type="button" id="btBack" class="inline-flex items-center rounded-s-lg border px-2 py-1 text-xs  focus:z-10 border-gray-700 bg-gray-800 text-white hover:bg-gray-700 hover:text-white focus:text-white">
-                <svg class="h-3 w-3 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24">
-                  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 19-7-7 7-7" />
-                </svg>
-              </button>
-
-              <button type="button" id="btNext" class="inline-flex items-center rounded-e-lg border  px-2 py-1 text-xs focus:z-10 border-gray-700 bg-gray-800 text-white hover:bg-gray-700 hover:text-white focus:text-white">
-                <svg class="h-3 w-3 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24">
-                  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 5 7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-
-          </div>
-          <div class="inline-flex items-center text-base font-semibold text-white">
-            <div class="flex flex-col p-1">
-              <button type="button" id="control" class="rounded-t-xl inline-flex items-center border px-1 py-1 text-xs focus:z-10 border-gray-700 bg-gray-800 text-white hover:bg-gray-700 hover:text-white focus:text-white">
-                <svg id="play" class="h-5 w-5 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-                  <path fill-rule="evenodd" d="M8.6 5.2A1 1 0 0 0 7 6v12a1 1 0 0 0 1.6.8l8-6a1 1 0 0 0 0-1.6l-8-6Z" clip-rule="evenodd" />
-                </svg>
-
-                <svg id="pause" class="hidden h-5 w-5 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-                  <path fill-rule="evenodd" d="M8 5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H8Zm7 0a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1Z" clip-rule="evenodd" />
-                </svg>
-
-                <svg id="lock" class="hidden h-5 w-5  text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-                  <path fill-rule="evenodd" d="M8 10V7a4 4 0 1 1 8 0v3h1a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h1Zm2-3a2 2 0 1 1 4 0v3h-4V7Zm2 6a1 1 0 0 1 1 1v3a1 1 0 1 1-2 0v-3a1 1 0 0 1 1-1Z" clip-rule="evenodd" />
-                </svg>
-              </button>
-
-
-
-              <button id="exitApp" type="button" class="rounded-b-xl inline-flex items-center  border  px-1 py-1 text-xs focus:z-10 border-gray-700 bg-gray-800 text-white hover:bg-gray-700 hover:text-white focus:text-white">
-                <svg class="h-5 w-5 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-                  <path fill-rule="evenodd" d="M2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10S2 17.523 2 12Zm7.707-3.707a1 1 0 0 0-1.414 1.414L10.586 12l-2.293 2.293a1 1 0 1 0 1.414 1.414L12 13.414l2.293 2.293a1 1 0 0 0 1.414-1.414L13.414 12l2.293-2.293a1 1 0 0 0-1.414-1.414L12 10.586 9.707 8.293Z" clip-rule="evenodd" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="off" class="drag ps-4">
-        <div class="mt-2 flex items-center space-x-4 rtl:space-x-reverse">
-          <div class="flex-shrink-0">
-            <img class="h-12 w-12 rounded-full" src="src/favicon.ico" />
-          </div>
-          <div class="min-w-0 flex-1">
-            <p class="truncate font-medium text-white">Olá</p>
-            <p class="truncate text-sm text-gray-400" id="serverMsg">...</p>
-          </div>
-        </div>
-      </div>
-    </div>
+  <body class="bg-transparent" style="font-family: 'Inter', sans-serif;">
+    <div id="root"></div>
+    <script type="module" src="/src/renderer/main.jsx"></script>
   </body>
-  <script type="module" src="src/js/front.js"></script>
 </html>

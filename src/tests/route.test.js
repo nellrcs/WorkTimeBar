@@ -1,15 +1,18 @@
 var Route = require('../js/Route.class')
 
-
 describe('Route', () => {
-    test('chek url empty', () => {
+    test('check url empty fallback', () => {
        let route = new Route(''); 
-      expect(route.filename).toBe('/src/painel.html');
+       expect(route.filename).toBe('/dist/painel.html');
     });
 
-    test('chek url ', () => {
-        let url = '/src/js/backoff.js';
-        let route = new Route(url); 
-       expect(route.filename).toBe(url);
+    test('check root url', () => {
+       let route = new Route('/'); 
+       expect(route.filename).toBe('/dist/painel.html');
+    });
+
+    test('check floating path', () => {
+       let route = new Route('/floating'); 
+       expect(route.filename).toBe('/dist/index.html');
     });
 });

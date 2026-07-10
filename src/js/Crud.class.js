@@ -30,7 +30,7 @@ module.exports = class Crud {
     }
 
     update(data){
-        this.db.run('UPDATE progress SET totalTimeSeconds = ?, totalTimeFloat = ? , totalProgress = ? WHERE id = ?,totalTimePause = ?, currentTimePause = ?, lastTimestempPlay = ?, lastTimestempPause = ?, active = ? ', data, function(err) {
+        this.db.run('UPDATE progress SET totalTimeSeconds = ?, totalTimeFloat = ?, totalProgress = ?, totalTimePause = ?, currentTimePause = ?, lastTimestempPlay = ?, lastTimestempPause = ?, active = ? WHERE id = ?', data, function(err) {
         if (err) {
             return console.error(err.message);
         }
@@ -52,7 +52,7 @@ module.exports = class Crud {
             if (err) {
                 return console.error(err.message);
             }
-            console.log(`Row with the ID ${id} has been deleted`);
+            console.log('All rows have been deleted');
         });
     }
 

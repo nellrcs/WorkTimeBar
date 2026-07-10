@@ -1,0 +1,35 @@
+{
+  "tasks": [
+    {
+      "id": "19f49516ba1",
+      "title": "Abelha",
+      "totalTimeFloat": 8,
+      "totalTimeSeconds": 28800,
+      "totalProgress": 63,
+      "totalTimePause": 0,
+      "active": false,
+      "flexible": true
+    },
+    {
+      "id": "19f4951a5af",
+      "title": "Marketing",
+      "totalTimeFloat": 7.996388888888889,
+      "totalTimeSeconds": 28787,
+      "totalProgress": 75,
+      "totalTimePause": 13,
+      "active": false,
+      "flexible": true
+    },
+    {
+      "id": "19f4951a7b1",
+      "title": "Tarefa #3",
+      "totalTimeFloat": 7.996388888888889,
+      "totalTimeSeconds": 28787,
+      "totalProgress": 235,
+      "totalTimePause": 14,
+      "active": false,
+      "flexible": true
+    }
+  ],
+  "dayTotalHours": 8
+}

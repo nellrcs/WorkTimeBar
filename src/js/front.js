@@ -36,7 +36,7 @@ btBack.onclick = () => {
   ipcRenderer.send('back', {});
 }
 
-ipcRenderer.on('instuctions', (event, arg) => {
+ipcRenderer.on('instructions', (event, arg) => {
   
   objbarra = new Progress();
   endCountBar();
