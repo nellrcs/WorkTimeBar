@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import logoImg from '../../img/logotipo.png';
 import faviconImg from '../../favicon.ico';
 
@@ -17,14 +17,10 @@ function convertSecondsToHour(seconds) {
 
 function convertFloatToHours(time) {
   const hours = parseFloat(time) || 0;
-  const h = Math.floor(hours);
-  let m = 0;
-  if (hours < 1) {
-    m = parseInt((parseInt(hours * 100) * 60) / 100);
-  } else {
-    m = Math.ceil(hours * 60) % 60;
-  }
-  const displayHours = hours >= 100 ? (`000${h}`).slice(-3) : (`00${h}`).slice(-2);
+  const totalMinutes = Math.round(hours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  const displayHours = h >= 100 ? (`000${h}`).slice(-3) : (`00${h}`).slice(-2);
   const displayMinutes = (`00${m}`).slice(-2);
   return `${displayHours}:${displayMinutes}h`;
 }
@@ -63,6 +59,7 @@ export default function ControlPanel() {
 
   // Connect socket.io
   useEffect(() => {
+    let hasSynced = false;
     const ioInstance = window.io ? window.io() : null;
     if (ioInstance) {
       setSocket(ioInstance);
@@ -72,12 +69,14 @@ export default function ControlPanel() {
         let localTasks = [];
         try { localTasks = JSON.parse(savedTasks) || []; } catch(e) {}
 
-        if (serverStore.tasks.length === 0 && localTasks.length > 0) {
+        if (!hasSynced && serverStore.tasks.length === 0 && localTasks.length > 0) {
+          hasSynced = true;
           const localHours = parseFloat(localStorage.getItem('meta_horas')) || 8;
           ioInstance.emit('save-store', { tasks: localTasks, dayTotalHours: localHours });
           setTasks(localTasks);
           setDayTotalHours(localHours);
         } else {
+          hasSynced = true;
           setTasks(serverStore.tasks);
           setDayTotalHours(serverStore.dayTotalHours);
           localStorage.setItem('tarefas', JSON.stringify(serverStore.tasks));
@@ -132,6 +131,13 @@ export default function ControlPanel() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (editingTaskId && !tasks.some(t => t.id === editingTaskId)) {
+      setEditingTaskId(null);
+      setEditingTitleText('');
+    }
+  }, [tasks, editingTaskId]);
 
   // Sync to local storage
   const saveTasks = (newTasks) => {
@@ -299,7 +305,9 @@ export default function ControlPanel() {
 
   const handleClearAll = () => {
     showModal('danger', 'Limpar Atividades', 'Deseja remover todos os itens da lista? Esta ação não pode ser desfeita.', () => {
-      handleStopAll();
+      if (socket) {
+        socket.emit('stop', {});
+      }
       saveTasks([]);
       localStorage.removeItem('tarefas');
       closeModal();

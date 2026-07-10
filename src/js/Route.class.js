@@ -39,18 +39,21 @@ module.exports = class Route {
       return;
     }
 
+    const projectRoot = path.resolve(__dirname, '..', '..');
+
     // 1. Try serving from the Vite compiled dist directory
-    const distPath = path.join(__dirname, '..', '..', 'dist', pathname);
-    if (fs.existsSync(distPath) && fs.statSync(distPath).isFile()) {
-      this.filename = '/dist' + pathname;
+    const relativePath = pathname.startsWith('/') ? pathname.slice(1) : pathname;
+    const distPath = path.resolve(projectRoot, 'dist', relativePath);
+    if (distPath.startsWith(path.join(projectRoot, 'dist')) && fs.existsSync(distPath) && fs.statSync(distPath).isFile()) {
+      this.filename = '/dist/' + relativePath;
       this.setContentTypeFromExtension(pathname);
       return;
     }
 
     // 2. Fallback to serving directly from the project root (e.g. /src/img/logotipo.png or /src/favicon.ico)
-    const projectPath = path.join(__dirname, '..', '..', pathname);
-    if (fs.existsSync(projectPath) && fs.statSync(projectPath).isFile()) {
-      this.filename = pathname;
+    const projectPath = path.resolve(projectRoot, relativePath);
+    if (projectPath.startsWith(projectRoot) && fs.existsSync(projectPath) && fs.statSync(projectPath).isFile()) {
+      this.filename = '/' + relativePath;
       this.setContentTypeFromExtension(pathname);
       return;
     }

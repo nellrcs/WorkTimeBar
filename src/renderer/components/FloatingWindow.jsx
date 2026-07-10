@@ -15,7 +15,8 @@ function convertSecondsToHour(seconds) {
 }
 
 function barPercentage(value, max) {
-  let bar = parseInt((100 * value) / max);
+  if (!max) return 0;
+  let bar = Math.round((100 * value) / max);
   if (bar <= 100) return bar;
   return 100;
 }
@@ -35,25 +36,25 @@ export default function FloatingWindow() {
   const pauseTimerRef = useRef(null);
   
   // Persistent refs for timestamps and backing up values to avoid closure issues in intervals
+  const activityRef = useRef(null);
+  activityRef.current = activity;
+
+  const activeRef = useRef(active);
+  activeRef.current = active;
+
+  const totalProgressRef = useRef(totalProgress);
+  totalProgressRef.current = totalProgress;
+
+  const totalTimePauseRef = useRef(totalTimePause);
+  totalTimePauseRef.current = totalTimePause;
+
   const stateRef = useRef({
-    totalProgress: 0,
-    totalTimeSeconds: 0,
-    totalTimePause: 0,
-    lastTimestempPlay: 0,
-    lastTimestempPause: 0,
-    flexible: false
+    playStartTime: 0,
+    pauseStartTime: 0,
+    basePauseProgress: 0
   });
 
-  // Sync stateRef with state variables
-  useEffect(() => {
-    if (activity) {
-      stateRef.current.totalProgress = totalProgress;
-      stateRef.current.totalTimeSeconds = activity.totalTimeSeconds;
-      stateRef.current.totalTimePause = totalTimePause;
-      stateRef.current.flexible = activity.flexible;
-    }
-  }, [totalProgress, totalTimePause, activity]);
-
+  // Connect socket.io
   useEffect(() => {
     // 1. Listen for instructions from the control panel
     const removeInstructions = window.electronAPI.on('instructions', (arg) => {
@@ -66,28 +67,21 @@ export default function FloatingWindow() {
       pauseTimerRef.current = null;
 
       const initProgress = arg.totalProgress || 0;
+      const initTimePause = arg.totalTimePause || 0;
       setActivity(arg);
       setTotalProgress(initProgress);
-      setTotalTimePause(arg.totalTimePause || 0);
+      setTotalTimePause(initTimePause);
       setCurrentTimePause(arg.currentTimePause || 0);
       setActive(arg.active || false);
-
-      stateRef.current = {
-        totalProgress: initProgress,
-        totalTimeSeconds: arg.totalTimeSeconds,
-        totalTimePause: arg.totalTimePause || 0,
-        lastTimestempPlay: 0,
-        lastTimestempPause: 0,
-        flexible: arg.flexible || false
-      };
 
       // Reactively trigger play/pause timers based on active parameter
       if (arg.active) {
         const totalSec = arg.totalTimeSeconds;
-        stateRef.current.lastTimestempPlay = (Date.now() - (initProgress * 1000)) + (1000 * totalSec);
+        stateRef.current.playStartTime = Date.now() - (initProgress * 1000);
 
         playTimerRef.current = setInterval(() => {
-          const currProgress = totalSec - Math.ceil((stateRef.current.lastTimestempPlay - Date.now()) / 1000);
+          const elapsed = Math.floor((Date.now() - stateRef.current.playStartTime) / 1000);
+          const currProgress = Math.min(elapsed, totalSec);
           
           if (currProgress >= totalSec) {
             setTotalProgress(totalSec);
@@ -99,7 +93,7 @@ export default function FloatingWindow() {
             window.electronAPI.send('finish', {
               ...arg,
               totalProgress: totalSec,
-              totalTimePause: stateRef.current.totalTimePause,
+              totalTimePause: totalTimePauseRef.current,
               active: false
             });
           } else {
@@ -107,28 +101,33 @@ export default function FloatingWindow() {
             window.electronAPI.send('status', {
               ...arg,
               totalProgress: currProgress,
-              totalTimePause: stateRef.current.totalTimePause,
+              totalTimePause: totalTimePauseRef.current,
               active: true
             });
           }
         }, 1000);
       } else {
         // Pause timer to count inactive time
-        stateRef.current.lastTimestempPause = Date.now();
-        const totalTimePauseBkup = arg.totalTimePause || 0;
+        stateRef.current.pauseStartTime = Date.now();
+        stateRef.current.basePauseProgress = initTimePause;
 
-        pauseTimerRef.current = setInterval(() => {
-          const isFinished = stateRef.current.totalProgress >= stateRef.current.totalTimeSeconds;
-          if (isFinished) {
-            clearInterval(pauseTimerRef.current);
-            pauseTimerRef.current = null;
-          } else {
-            const iTime = Math.floor((Date.now() - stateRef.current.lastTimestempPause) / 1000);
-            const nextPauseVal = totalTimePauseBkup + iTime;
+        // Only track pause if the task is not completed yet
+        if (initProgress < arg.totalTimeSeconds) {
+          pauseTimerRef.current = setInterval(() => {
+            const elapsedPause = Math.floor((Date.now() - stateRef.current.pauseStartTime) / 1000);
+            const nextPauseVal = stateRef.current.basePauseProgress + elapsedPause;
             setTotalTimePause(nextPauseVal);
-            setCurrentTimePause(iTime);
-          }
-        }, 1000);
+            setCurrentTimePause(elapsedPause);
+
+            window.electronAPI.send('status', {
+              ...arg,
+              totalProgress: totalProgressRef.current,
+              totalTimePause: nextPauseVal,
+              currentTimePause: elapsedPause,
+              active: false
+            });
+          }, 1000);
+        }
       }
     });
 
@@ -141,7 +140,6 @@ export default function FloatingWindow() {
       clearInterval(pauseTimerRef.current);
       playTimerRef.current = null;
       pauseTimerRef.current = null;
-      window.localStorage.clear();
     });
 
     // 3. Listen for server messages
@@ -162,84 +160,78 @@ export default function FloatingWindow() {
   }, []);
 
   const handleControlClick = () => {
-    if (!activity) return;
+    if (!activityRef.current) return;
 
-    const nextActiveState = !active;
+    const nextActiveState = !activeRef.current;
     setActive(nextActiveState);
 
     if (nextActiveState) {
-      // Play clicked
+      // Play clicked: clear pause timer
       clearInterval(pauseTimerRef.current);
       pauseTimerRef.current = null;
       setCurrentTimePause(0);
 
-      // Math matches the original front.js play logic
-      const backupProg = stateRef.current.totalProgress;
-      const totalSec = stateRef.current.totalTimeSeconds;
-      stateRef.current.lastTimestempPlay = (Date.now() - (backupProg * 1000)) + (1000 * totalSec);
+      const backupProg = totalProgressRef.current;
+      const totalSec = activityRef.current.totalTimeSeconds;
+      stateRef.current.playStartTime = Date.now() - (backupProg * 1000);
 
       playTimerRef.current = setInterval(() => {
-        const currProgress = totalSec - Math.ceil((stateRef.current.lastTimestempPlay - Date.now()) / 1000);
+        const elapsed = Math.floor((Date.now() - stateRef.current.playStartTime) / 1000);
+        const currProgress = Math.min(elapsed, totalSec);
         
         if (currProgress >= totalSec) {
           setTotalProgress(totalSec);
           clearInterval(playTimerRef.current);
           playTimerRef.current = null;
           setActive(false);
-          // Auto-trigger pause/completion flow
-          triggerPauseTimer(totalSec);
+
+          window.electronAPI.send('finish', {
+            ...activityRef.current,
+            totalProgress: totalSec,
+            totalTimePause: totalTimePauseRef.current,
+            active: false
+          });
         } else {
           setTotalProgress(currProgress);
           window.electronAPI.send('status', {
-            ...activity,
+            ...activityRef.current,
             totalProgress: currProgress,
-            totalTimePause: stateRef.current.totalTimePause,
+            totalTimePause: totalTimePauseRef.current,
             active: true
           });
         }
       }, 1000);
 
     } else {
-      // Pause clicked
+      // Pause clicked: clear play timer and start pause timer
       clearInterval(playTimerRef.current);
       playTimerRef.current = null;
-      triggerPauseTimer(stateRef.current.totalProgress);
-    }
-  };
-
-  const triggerPauseTimer = (currentProg) => {
-    const totalTimePauseBkup = stateRef.current.totalTimePause;
-    const totalSec = stateRef.current.totalTimeSeconds;
-    stateRef.current.lastTimestempPause = Date.now();
-
-    pauseTimerRef.current = setInterval(() => {
-      const isFinished = currentProg >= totalSec;
       
-      if (isFinished) {
-        // Concluída
-        clearInterval(pauseTimerRef.current);
-        pauseTimerRef.current = null;
-        window.electronAPI.send('finish', {
-          ...activity,
-          totalProgress: currentProg,
-          totalTimePause: stateRef.current.totalTimePause,
-          active: false
-        });
-      } else {
-        const iTime = Math.floor((Date.now() - stateRef.current.lastTimestempPause) / 1000);
-        const nextPauseVal = totalTimePauseBkup + iTime;
-        setTotalTimePause(nextPauseVal);
-        setCurrentTimePause(iTime);
+      const totalSec = activityRef.current.totalTimeSeconds;
+      const currentProg = totalProgressRef.current;
+      const initTimePause = totalTimePauseRef.current;
 
-        window.electronAPI.send('status', {
-          ...activity,
-          totalProgress: currentProg,
-          totalTimePause: nextPauseVal,
-          currentTimePause: iTime,
-          active: false
-        });
+      stateRef.current.pauseStartTime = Date.now();
+      stateRef.current.basePauseProgress = initTimePause;
+
+      // Only track pause if the task is not completed yet
+      if (currentProg < totalSec) {
+        pauseTimerRef.current = setInterval(() => {
+          const elapsedPause = Math.floor((Date.now() - stateRef.current.pauseStartTime) / 1000);
+          const nextPauseVal = stateRef.current.basePauseProgress + elapsedPause;
+          setTotalTimePause(nextPauseVal);
+          setCurrentTimePause(elapsedPause);
+
+          window.electronAPI.send('status', {
+            ...activityRef.current,
+            totalProgress: currentProg,
+            totalTimePause: nextPauseVal,
+            currentTimePause: elapsedPause,
+            active: false
+          });
+        }, 1000);
       }
-    }, 1000);
+    }
   };
 
   const handleNext = () => window.electronAPI.send('next', {});

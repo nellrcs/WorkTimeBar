@@ -158,7 +158,7 @@ function loadStore() {
       const data = JSON.parse(fs.readFileSync(STORAGE_PATH, 'utf-8'));
       if (data && typeof data === 'object') {
         store.tasks = data.tasks || [];
-        store.dayTotalHours = data.dayTotalHours || 8;
+        store.dayTotalHours = typeof data.dayTotalHours === 'number' ? data.dayTotalHours : 8;
 
         const activeTask = store.tasks.find(t => t.active);
         if (activeTask) {
@@ -175,11 +175,41 @@ function loadStore() {
   }
 }
 
+let saveStoreTimeout = null;
+
 function saveStore() {
   try {
-    fs.writeFileSync(STORAGE_PATH, JSON.stringify(store, null, 2), 'utf-8');
+    const tempPath = STORAGE_PATH + '.tmp';
+    fs.writeFileSync(tempPath, JSON.stringify(store, null, 2), 'utf-8');
+    fs.renameSync(tempPath, STORAGE_PATH);
   } catch (err) {
     log('ERROR', `Erro ao salvar tasks-store.json: ${err.message}`);
+  }
+}
+
+function debouncedSaveStore() {
+  if (saveStoreTimeout) return;
+  saveStoreTimeout = setTimeout(() => {
+    saveStore();
+    saveStoreTimeout = null;
+  }, 15000);
+}
+
+function saveStoreImmediately() {
+  if (saveStoreTimeout) {
+    clearTimeout(saveStoreTimeout);
+    saveStoreTimeout = null;
+  }
+  saveStore();
+}
+
+function safeSendToOverlay(channel, data) {
+  if (childWindow && !childWindow.isDestroyed()) {
+    try {
+      childWindow.webContents.send(channel, data);
+    } catch (err) {
+      log('ERROR', `Erro ao enviar dados para canal ${channel}: ${err.message}`);
+    }
   }
 }
 
@@ -198,15 +228,12 @@ function handleShiftTask(direction) {
     ...t,
     active: i === nextIdx
   }));
-  saveStore();
+  saveStoreImmediately();
 
   const computed = getComputedTasks();
   packege = computed[nextIdx];
 
-  if (globalEvent) {
-    globalEvent.sender.send('instructions', packege);
-  }
-
+  safeSendToOverlay('instructions', packege);
   io.emit('sync-store', store);
 }
 
@@ -241,22 +268,19 @@ io.on('connection', (socket) => {
       ...t,
       active: t.id === msg.id
     }));
-    saveStore();
+    saveStoreImmediately();
 
-    if (globalEvent) {
-      globalEvent.sender.send('instructions', packege);
-    }
+    safeSendToOverlay('instructions', packege);
     socket.broadcast.emit('sync-store', store);
   });
 
   socket.on('stop', (msg) => {
     log('SOCKET', 'Comando STOP recebido do painel.');
     store.tasks = store.tasks.map(t => ({ ...t, active: false }));
-    saveStore();
+    saveStoreImmediately();
+    packege = {};
 
-    if (globalEvent) {
-      globalEvent.sender.send('stop', msg);
-    }
+    safeSendToOverlay('stop', msg);
     socket.broadcast.emit('sync-store', store);
   });
 
@@ -264,8 +288,8 @@ io.on('connection', (socket) => {
     log('SOCKET', 'Novo store recebido do painel.', newStore);
     if (newStore && typeof newStore === 'object') {
       store.tasks = newStore.tasks || [];
-      store.dayTotalHours = newStore.dayTotalHours || 8;
-      saveStore();
+      store.dayTotalHours = typeof newStore.dayTotalHours === 'number' ? newStore.dayTotalHours : 8;
+      saveStoreImmediately();
       socket.broadcast.emit('sync-store', store);
     }
   });
@@ -286,11 +310,9 @@ ipcMain.on('status', (event, arg) => {
     }
     return t;
   });
-  saveStore();
+  debouncedSaveStore();
 
-  if (currentSocket) {
-    currentSocket.emit('update', arg);
-  }
+  io.emit('update', arg);
 });
 
 ipcMain.on('next', (event, arg) => {
@@ -306,12 +328,11 @@ ipcMain.on('back', (event, arg) => {
 ipcMain.on('exit', (event, arg) => {
   log('IPC', 'Overlay exit recebido. Encerrando processos...');
   store.tasks = store.tasks.map(t => ({ ...t, active: false }));
-  saveStore();
+  saveStoreImmediately();
+  packege = {};
   
-  if (currentSocket) {
-    currentSocket.emit('exit', arg);
-  }
-  process.exit(0);
+  io.emit('exit', arg);
+  setTimeout(() => process.exit(0), 500);
 });
 
 ipcMain.on('finish', (event, arg) => {
@@ -327,11 +348,9 @@ ipcMain.on('finish', (event, arg) => {
     }
     return t;
   });
-  saveStore();
+  saveStoreImmediately();
 
-  if (currentSocket) {
-    currentSocket.emit('update', { ...arg, active: false });
-  }
+  io.emit('update', { ...arg, active: false });
   showNotification(arg);
 });
 
@@ -341,8 +360,15 @@ ipcMain.on('online', (event, arg) => {
   const welcomeMsg = `Acesse <strong>http://localhost:${PORT}</strong> para selecionar uma nova atividade`;
   event.sender.send('server', welcomeMsg);
 
-  if (packege && Object.keys(packege).length > 0) {
-    event.sender.send('instructions', packege);
+  // Deriving the active task from the store to ensure it's not a stale/deleted task
+  const activeTask = store.tasks.find(t => t.active);
+  if (activeTask) {
+    const computed = getComputedTasks();
+    const computedActive = computed.find(t => t.id === activeTask.id);
+    if (computedActive) {
+      packege = computedActive;
+      event.sender.send('instructions', packege);
+    }
   }
 });
 
