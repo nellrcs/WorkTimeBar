@@ -57,6 +57,9 @@ export default function ControlPanel() {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingTitleText, setEditingTitleText] = useState('');
 
+  // Checkpoints Modal state
+  const [checkpointModalTask, setCheckpointModalTask] = useState(null);
+
   // Connect socket.io
   useEffect(() => {
     let hasSynced = false;
@@ -93,7 +96,8 @@ export default function ControlPanel() {
                 totalProgress: arg.totalProgress,
                 totalTimePause: arg.totalTimePause,
                 currentTimePause: arg.currentTimePause,
-                active: arg.active
+                active: arg.active,
+                checkpoints: arg.checkpoints || t.checkpoints || []
               };
             }
             return t;
@@ -210,7 +214,8 @@ export default function ControlPanel() {
       totalProgress: 0,
       totalTimePause: 0,
       active: false,
-      flexible: !isFixed
+      flexible: !isFixed,
+      checkpoints: []
     };
 
     const newTasks = [...tasks, newTaskObj];
@@ -273,23 +278,25 @@ export default function ControlPanel() {
   };
 
   const handleSetActive = (index) => {
-    const updated = computedTasks.map((t, i) => {
-      return {
-        ...t,
-        active: i === index
-      };
-    });
-    
-    // Sync base list (preserving flexible attribute)
-    const baseUpdated = tasks.map((t, i) => ({
-      ...t,
-      active: i === index
-    }));
-    
-    saveTasks(baseUpdated);
+    const targetTask = computedTasks[index];
+    if (!targetTask) return;
 
-    if (socket && updated[index]) {
-      socket.emit('evento', updated[index]);
+    setTasks(prevTasks => {
+      const updated = prevTasks.map(t => ({
+        ...t,
+        active: t.id === targetTask.id
+      }));
+      localStorage.setItem('tarefas', JSON.stringify(updated));
+      return updated;
+    });
+
+    const activeTargetTask = {
+      ...targetTask,
+      active: true
+    };
+
+    if (socket) {
+      socket.emit('evento', activeTargetTask);
     }
   };
 
@@ -746,6 +753,11 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
                               Livre
                             </span>
                           )}
+                          {task.checkpoints && task.checkpoints.length > 0 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase tracking-wider shrink-0">
+                              🚩 {task.checkpoints.length} {task.checkpoints.length === 1 ? 'sessão' : 'retornos'}
+                            </span>
+                          )}
                         </div>
                         <p className="text-[10px] text-neutral-500 mt-0.5 font-mono">Alocado: {!task.flexible ? `${task.totalTimeFloat.toFixed(1)}h` : 'Variável'}</p>
                       </div>
@@ -775,6 +787,19 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
 
                       {/* Delete & Edit Actions */}
                       <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCheckpointModalTask(task);
+                          }}
+                          title="Ver histórico de checkpoints e retornos"
+                          className="p-2 rounded-lg border border-neutral-900 bg-neutral-950/60 text-neutral-600 hover:text-cyan-400 hover:bg-cyan-500/5 transition-all"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                          </svg>
+                        </button>
                         <button
                           type="button"
                           onClick={(e) => {
@@ -908,6 +933,104 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Checkpoint / Sessions Modal */}
+      {checkpointModalTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setCheckpointModalTask(null)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-[fadeIn_150ms_ease-out]"></div>
+          <div 
+            className="relative w-full max-w-lg rounded-2xl border border-neutral-800 bg-neutral-950/95 backdrop-blur-xl shadow-[0_0_60px_rgba(0,0,0,0.8)] animate-[scaleIn_200ms_ease-out] overflow-hidden flex flex-col max-h-[85vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent shadow-[0_1px_8px_rgba(6,182,212,0.6)]"></div>
+            <div className="p-6 pb-4 border-b border-neutral-900 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 shrink-0">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-neutral-100 truncate max-w-[280px]">
+                    {checkpointModalTask.title}
+                  </h3>
+                  <p className="text-[11px] text-neutral-400">
+                    Histórico de Retornos e Sessões ({checkpointModalTask.checkpoints ? checkpointModalTask.checkpoints.length : 0})
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setCheckpointModalTask(null)}
+                className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-3 font-sans">
+              {(!checkpointModalTask.checkpoints || checkpointModalTask.checkpoints.length === 0) ? (
+                <div className="py-8 text-center text-xs text-neutral-500">
+                  Nenhum checkpoint registrado ainda para esta atividade.
+                </div>
+              ) : (
+                checkpointModalTask.checkpoints.map((cp, i) => {
+                  const startFormatted = cp.startTime ? new Date(cp.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--';
+                  const endFormatted = cp.endTime ? new Date(cp.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Em andamento...';
+                  const dateFormatted = cp.startTime ? new Date(cp.startTime).toLocaleDateString([], { day: '2-digit', month: '2-digit' }) : '';
+                  const isCurrent = cp.endTime === null;
+
+                  return (
+                    <div key={cp.id || i} className={`p-3.5 rounded-xl border flex items-center justify-between text-xs transition-all ${
+                      isCurrent 
+                        ? 'border-cyan-500/30 bg-cyan-500/5 shadow-[0_0_10px_rgba(6,182,212,0.05)]' 
+                        : 'border-neutral-900 bg-neutral-900/40 hover:border-neutral-800'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-[10px] font-bold font-mono ${
+                          isCurrent ? 'bg-cyan-500 text-neutral-950' : 'bg-neutral-800 text-neutral-400'
+                        }`}>
+                          #{i + 1}
+                        </span>
+                        <div>
+                          <div className="font-semibold text-neutral-200 flex items-center gap-2">
+                            <span>{dateFormatted} {startFormatted} — {endFormatted}</span>
+                            {isCurrent && (
+                              <span className="px-1.5 py-0.5 text-[8px] rounded bg-cyan-500/20 text-cyan-300 font-bold uppercase tracking-wider animate-pulse">
+                                Ativa
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] font-mono text-neutral-500 mt-0.5">
+                            Progresso: {convertSecondsToHour(cp.progressStart || 0)} ➔ {convertSecondsToHour(cp.progressEnd || 0)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="font-mono font-bold text-cyan-400 text-sm">
+                          {convertSecondsToHour(cp.duration || 0)}
+                        </span>
+                        <div className="text-[9px] text-neutral-500 uppercase tracking-wider">
+                          Decorridos
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="p-4 border-t border-neutral-900 bg-neutral-950/80 flex justify-end">
+              <button
+                onClick={() => setCheckpointModalTask(null)}
+                className="px-4 py-2 rounded-xl bg-white hover:bg-neutral-100 text-black text-xs font-bold transition-all"
+              >
+                Fechar
+              </button>
             </div>
           </div>
         </div>

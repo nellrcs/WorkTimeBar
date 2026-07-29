@@ -213,6 +213,44 @@ function safeSendToOverlay(channel, data) {
   }
 }
 
+function syncTaskCheckpoints(task, isNowActive, currentProgress) {
+  let checkpoints = Array.isArray(task.checkpoints) ? [...task.checkpoints] : [];
+  const prog = currentProgress !== undefined ? currentProgress : (task.totalProgress || 0);
+
+  if (isNowActive) {
+    let openIdx = checkpoints.findIndex(c => c.endTime === null);
+    if (openIdx === -1) {
+      checkpoints.push({
+        id: Date.now(),
+        startTime: new Date().toISOString(),
+        endTime: null,
+        progressStart: prog,
+        progressEnd: prog,
+        duration: 0
+      });
+    } else {
+      const cp = { ...checkpoints[openIdx] };
+      cp.progressEnd = prog;
+      cp.duration = Math.max(0, prog - cp.progressStart);
+      checkpoints[openIdx] = cp;
+    }
+  } else {
+    checkpoints = checkpoints.map(c => {
+      if (c.endTime === null) {
+        return {
+          ...c,
+          endTime: new Date().toISOString(),
+          progressEnd: prog,
+          duration: Math.max(0, prog - c.progressStart)
+        };
+      }
+      return c;
+    });
+  }
+
+  return checkpoints;
+}
+
 function handleShiftTask(direction) {
   if (store.tasks.length === 0) return;
 
@@ -224,10 +262,14 @@ function handleShiftTask(direction) {
     nextIdx = activeIdx !== -1 ? (activeIdx - 1 + store.tasks.length) % store.tasks.length : store.tasks.length - 1;
   }
 
-  store.tasks = store.tasks.map((t, i) => ({
-    ...t,
-    active: i === nextIdx
-  }));
+  store.tasks = store.tasks.map((t, i) => {
+    const isNowActive = (i === nextIdx);
+    return {
+      ...t,
+      active: isNowActive,
+      checkpoints: syncTaskCheckpoints(t, isNowActive, t.totalProgress)
+    };
+  });
   saveStoreImmediately();
 
   const computed = getComputedTasks();
@@ -263,34 +305,56 @@ io.on('connection', (socket) => {
 
   socket.on('evento', (msg) => {
     log('SOCKET', 'Instruções recebidas do painel. Atualizando overlay.', msg);
-    packege = msg;
-    store.tasks = store.tasks.map(t => ({
-      ...t,
-      active: t.id === msg.id
-    }));
+    store.tasks = store.tasks.map(t => {
+      const isNowActive = (t.id === msg.id);
+      return {
+        ...t,
+        active: isNowActive,
+        checkpoints: syncTaskCheckpoints(t, isNowActive, t.totalProgress)
+      };
+    });
+
+    const computed = getComputedTasks();
+    const activeTaskObj = computed.find(t => t.id === msg.id);
+    packege = activeTaskObj ? { ...activeTaskObj, active: true } : { ...msg, active: true };
+
     saveStoreImmediately();
 
     safeSendToOverlay('instructions', packege);
-    socket.broadcast.emit('sync-store', store);
+    io.emit('sync-store', store);
   });
 
   socket.on('stop', (msg) => {
     log('SOCKET', 'Comando STOP recebido do painel.');
-    store.tasks = store.tasks.map(t => ({ ...t, active: false }));
+    store.tasks = store.tasks.map(t => ({
+      ...t,
+      active: false,
+      checkpoints: syncTaskCheckpoints(t, false, t.totalProgress)
+    }));
     saveStoreImmediately();
     packege = {};
 
     safeSendToOverlay('stop', msg);
-    socket.broadcast.emit('sync-store', store);
+    io.emit('sync-store', store);
   });
 
   socket.on('save-store', (newStore) => {
     log('SOCKET', 'Novo store recebido do painel.', newStore);
     if (newStore && typeof newStore === 'object') {
-      store.tasks = newStore.tasks || [];
+      store.tasks = (newStore.tasks || []).map(t => {
+        const existing = store.tasks.find(et => et.id === t.id);
+        const incomingCheckpoints = (Array.isArray(t.checkpoints) && t.checkpoints.length > 0)
+          ? t.checkpoints
+          : (existing && Array.isArray(existing.checkpoints) ? existing.checkpoints : []);
+
+        return {
+          ...t,
+          checkpoints: syncTaskCheckpoints({ ...t, checkpoints: incomingCheckpoints }, t.active, t.totalProgress)
+        };
+      });
       store.dayTotalHours = typeof newStore.dayTotalHours === 'number' ? newStore.dayTotalHours : 8;
       saveStoreImmediately();
-      socket.broadcast.emit('sync-store', store);
+      io.emit('sync-store', store);
     }
   });
 });
@@ -298,21 +362,28 @@ io.on('connection', (socket) => {
 // IPC Main communication listeners
 ipcMain.on('status', (event, arg) => {
   log('IPC', 'Overlay status recebido:', arg);
+  let updatedTask = null;
   store.tasks = store.tasks.map(t => {
     if (t.id === arg.id) {
-      return {
+      const updatedCheckpoints = syncTaskCheckpoints(t, arg.active, arg.totalProgress);
+      updatedTask = {
         ...t,
         totalProgress: arg.totalProgress,
         totalTimePause: arg.totalTimePause,
         currentTimePause: arg.currentTimePause,
-        active: arg.active
+        active: arg.active,
+        checkpoints: updatedCheckpoints
       };
+      return updatedTask;
     }
     return t;
   });
   debouncedSaveStore();
 
-  io.emit('update', arg);
+  io.emit('update', {
+    ...arg,
+    checkpoints: updatedTask ? updatedTask.checkpoints : []
+  });
 });
 
 ipcMain.on('next', (event, arg) => {
@@ -327,7 +398,11 @@ ipcMain.on('back', (event, arg) => {
 
 ipcMain.on('exit', (event, arg) => {
   log('IPC', 'Overlay exit recebido. Encerrando processos...');
-  store.tasks = store.tasks.map(t => ({ ...t, active: false }));
+  store.tasks = store.tasks.map(t => ({
+    ...t,
+    active: false,
+    checkpoints: syncTaskCheckpoints(t, false, t.totalProgress)
+  }));
   saveStoreImmediately();
   packege = {};
   
@@ -343,7 +418,8 @@ ipcMain.on('finish', (event, arg) => {
         ...t,
         totalProgress: arg.totalProgress,
         totalTimePause: arg.totalTimePause,
-        active: false
+        active: false,
+        checkpoints: syncTaskCheckpoints(t, false, arg.totalProgress)
       };
     }
     return t;
