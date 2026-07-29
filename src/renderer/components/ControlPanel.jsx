@@ -29,12 +29,35 @@ function convertFloatToSeconds(time) {
   return Math.floor(time * 3600);
 }
 
+function computeWorkdayHours(startStr, endStr, breakHours) {
+  if (!startStr || !endStr) return 8;
+  const [sH, sM] = startStr.split(':').map(Number);
+  const [eH, eM] = endStr.split(':').map(Number);
+  if (isNaN(sH) || isNaN(eH)) return 8;
+  
+  let startMinutes = sH * 60 + (sM || 0);
+  let endMinutes = eH * 60 + (eM || 0);
+  
+  if (endMinutes <= startMinutes) {
+    endMinutes += 24 * 60;
+  }
+
+  const grossMinutes = endMinutes - startMinutes;
+  const breakMinutes = (parseFloat(breakHours) || 0) * 60;
+  const netMinutes = Math.max(60, grossMinutes - breakMinutes);
+  const netHours = Math.round((netMinutes / 60) * 10) / 10;
+  return netHours;
+}
+
 export default function ControlPanel() {
   const [socket, setSocket] = useState(null);
   const [offline, setOffline] = useState(false);
 
   // Form states
   const [dayTotalHours, setDayTotalHours] = useState(8);
+  const [workdayStart, setWorkdayStart] = useState('08:00');
+  const [workdayEnd, setWorkdayEnd] = useState('17:00');
+  const [lunchBreak, setLunchBreak] = useState(1.0);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDuration, setTaskDuration] = useState(0);
   const [isFixed, setIsFixed] = useState(false);
@@ -116,6 +139,10 @@ export default function ControlPanel() {
     // Load from local storage
     const saved = localStorage.getItem('tarefas');
     const savedHours = localStorage.getItem('meta_horas');
+    const savedStart = localStorage.getItem('workday_start');
+    const savedEnd = localStorage.getItem('workday_end');
+    const savedBreak = localStorage.getItem('workday_break');
+
     if (saved) {
       try {
         setTasks(JSON.parse(saved));
@@ -123,8 +150,15 @@ export default function ControlPanel() {
         setTasks([]);
       }
     }
+    if (savedStart) setWorkdayStart(savedStart);
+    if (savedEnd) setWorkdayEnd(savedEnd);
+    if (savedBreak !== null && savedBreak !== undefined) setLunchBreak(parseFloat(savedBreak) || 0);
+
     if (savedHours) {
       setDayTotalHours(parseFloat(savedHours) || 8);
+    } else if (savedStart && savedEnd) {
+      const computed = computeWorkdayHours(savedStart, savedEnd, parseFloat(savedBreak) || 0);
+      setDayTotalHours(computed);
     }
 
     return () => {
@@ -158,6 +192,19 @@ export default function ControlPanel() {
     if (socket) {
       socket.emit('save-store', { tasks, dayTotalHours: hours });
     }
+  };
+
+  const handleWorkdayChange = (newStart, newEnd, newBreak) => {
+    setWorkdayStart(newStart);
+    setWorkdayEnd(newEnd);
+    setLunchBreak(newBreak);
+
+    localStorage.setItem('workday_start', newStart);
+    localStorage.setItem('workday_end', newEnd);
+    localStorage.setItem('workday_break', newBreak.toString());
+
+    const computedHours = computeWorkdayHours(newStart, newEnd, newBreak);
+    handleUpdateDayHours(computedHours);
   };
 
   // Calculations according to the new remaining time sharing rules
@@ -529,19 +576,86 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
             <h2 className="text-base font-bold text-neutral-200 tracking-tight">Nova Atividade</h2>
 
             <div className="space-y-4">
-              {/* Meta total input */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-500 mb-1.5">
-                  Meta diária (horas)
-                </label>
-                <div className="relative flex items-center">
-                  <input
-                    type="number"
-                    value={dayTotalHours}
-                    onChange={(e) => handleUpdateDayHours(Math.max(0.1, parseFloat(e.target.value) || 0))}
-                    className="w-full rounded-xl border border-neutral-900 bg-neutral-950/80 text-neutral-100 placeholder-neutral-700 focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all duration-200 p-3 text-sm font-semibold"
-                  />
-                  <span className="absolute right-4 text-[10px] font-bold text-neutral-600 uppercase">horas</span>
+              {/* Cronograma de Jornada Module */}
+              <div className="p-4 rounded-xl border border-neutral-900 bg-neutral-950/60 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-neutral-200 tracking-tight">Cronograma de Jornada</h3>
+                      <p className="text-[10px] text-neutral-500">Início, término e pausa de almoço</p>
+                    </div>
+                  </div>
+                  <div className="text-right font-mono">
+                    <span className="text-xs font-extrabold text-cyan-400">{dayTotalHours}h</span>
+                    <span className="text-[9px] text-neutral-500 block uppercase tracking-wider">Úteis</span>
+                  </div>
+                </div>
+
+                {/* Inputs Grid */}
+                <div className="grid grid-cols-3 gap-2">
+                  {/* Início */}
+                  <div>
+                    <label className="block text-[9px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
+                      🟢 Entrada
+                    </label>
+                    <input
+                      type="time"
+                      value={workdayStart}
+                      onChange={(e) => handleWorkdayChange(e.target.value, workdayEnd, lunchBreak)}
+                      className="w-full rounded-lg border border-neutral-900 bg-neutral-950 text-neutral-100 p-2 text-xs font-semibold font-mono outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  {/* Término */}
+                  <div>
+                    <label className="block text-[9px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
+                      🔴 Saída
+                    </label>
+                    <input
+                      type="time"
+                      value={workdayEnd}
+                      onChange={(e) => handleWorkdayChange(workdayStart, e.target.value, lunchBreak)}
+                      className="w-full rounded-lg border border-neutral-900 bg-neutral-950 text-neutral-100 p-2 text-xs font-semibold font-mono outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  {/* Pausa / Almoço */}
+                  <div>
+                    <label className="block text-[9px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
+                      🟡 Almoço
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        max="4"
+                        value={lunchBreak}
+                        onChange={(e) => handleWorkdayChange(workdayStart, workdayEnd, Math.max(0, parseFloat(e.target.value) || 0))}
+                        className="w-full rounded-lg border border-neutral-900 bg-neutral-950 text-neutral-100 p-2 text-xs font-semibold font-mono outline-none focus:border-cyan-500"
+                      />
+                      <span className="absolute right-2 text-[9px] font-bold text-neutral-600 uppercase">h</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Timeline Visual Graphic */}
+                <div className="pt-2.5 border-t border-neutral-900/60 space-y-2">
+                  <div className="flex items-center justify-between text-[9px] font-mono text-neutral-400">
+                    <span className="text-emerald-400 font-semibold">{workdayStart}</span>
+                    <span className="text-amber-400 font-semibold">Pausa ({lunchBreak}h)</span>
+                    <span className="text-red-400 font-semibold">{workdayEnd}</span>
+                  </div>
+                  <div className="h-2.5 w-full rounded-full bg-neutral-900 p-0.5 flex gap-0.5 overflow-hidden border border-neutral-900">
+                    <div className="h-full rounded-l-full bg-cyan-500/80 shadow-[0_0_8px_rgba(6,182,212,0.4)] flex-1" title="Turno 1 (Manhã)"></div>
+                    <div className="h-full bg-amber-500/80 w-1/5 shrink-0" title={`Almoço (${lunchBreak}h)`}></div>
+                    <div className="h-full rounded-r-full bg-sky-500/80 shadow-[0_0_8px_rgba(14,165,233,0.4)] flex-1" title="Turno 2 (Tarde)"></div>
+                  </div>
                 </div>
               </div>
 
