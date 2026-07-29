@@ -14,11 +14,15 @@
 *   **Luz de Fundo Ambiente Dinâmica**: O widget possui uma barra de brilho neon no topo com efeito de pulso suave e flutuação lenta no eixo X (`soft-bounce`), proporcionando um visual tecnológico premium sem atrapalhar a arrastabilidade e o uso da janela.
 *   **Cards Interativos**: Seleção e ativação de tarefas diretamente clicando em qualquer lugar do card da atividade, com indicadores circulares de seleção dedicados.
 
+![screenshot](https://github.com/user-attachments/assets/063860c0-44d5-4e43-87d0-247004a73aa6)
+
 ### 2. Sistema de Modais e Confirmações Customizados
 *   **Substituição de Diálogos Nativos**: Removemos todos os alertas e confirmações nativas do navegador (`alert()` / `confirm()`), substituindo-os por modais customizados ForgeUI com transições suaves (`fadeIn` / `scaleIn`), ícones contextuais e variações de acento neon:
     *   🔴 **Perigo (Danger)**: Utilizado para a remoção total de atividades da lista.
     *   🟡 **Aviso/Erro (Error)**: Para falhas em importações ou arquivos JSON corrompidos.
     *   🟢 **Sucesso (Success)**: Confirmações de importação completadas com sucesso.
+ 
+![screenshot](https://github.com/user-attachments/assets/a7c292ac-5abb-4def-9585-8bf31af7c8c6)
 
 ### 3. Banco de Dados Local Resiliente (Main Process)
 *   **Fonte Única da Verdade**: Criamos um armazenamento persistente em arquivo (`tasks-store.json`) gerenciado pelo processo principal do Electron.
