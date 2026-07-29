@@ -175,7 +175,7 @@ function loadStore() {
       const data = JSON.parse(fs.readFileSync(STORAGE_PATH, 'utf-8'));
       if (data && typeof data === 'object') {
         store.tasks = normalizeTasks(data.tasks);
-        store.dayTotalHours = typeof data.dayTotalHours === 'number' ? data.dayTotalHours : 8;
+        store.dayTotalHours = typeof data.dayTotalHours === 'number' ? data.dayTotalHours : (parseFloat(data.dayTotalHours) || 8);
 
         const activeTask = store.tasks.find(t => t.active);
         if (activeTask) {
@@ -417,18 +417,8 @@ function deleteAndMergeCheckpoint(task, checkpointId) {
   socket.on('save-store', (newStore) => {
     log('SOCKET', 'Novo store recebido do painel.', newStore);
     if (newStore && typeof newStore === 'object') {
-      store.tasks = (normalizeTasks(newStore.tasks)).map(t => {
-        const existing = store.tasks.find(et => et.id === t.id);
-        const incomingCheckpoints = (Array.isArray(t.checkpoints) && t.checkpoints.length > 0)
-          ? t.checkpoints
-          : (existing && Array.isArray(existing.checkpoints) ? existing.checkpoints : []);
-
-        return {
-          ...t,
-          checkpoints: syncTaskCheckpoints({ ...t, checkpoints: incomingCheckpoints }, t.active, t.totalProgress)
-        };
-      });
-      store.dayTotalHours = typeof newStore.dayTotalHours === 'number' ? newStore.dayTotalHours : 8;
+      store.tasks = normalizeTasks(newStore.tasks);
+      store.dayTotalHours = typeof newStore.dayTotalHours === 'number' ? newStore.dayTotalHours : (parseFloat(newStore.dayTotalHours) || 8);
       saveStoreImmediately();
       io.emit('sync-store', store);
     }

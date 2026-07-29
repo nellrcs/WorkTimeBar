@@ -29,45 +29,6 @@ function convertFloatToSeconds(time) {
   return Math.floor(time * 3600);
 }
 
-function computeWorkdayHours(startStr, endStr, breakHours) {
-  if (!startStr || !endStr) return 8;
-  const [sH, sM] = startStr.split(':').map(Number);
-  const [eH, eM] = endStr.split(':').map(Number);
-  if (isNaN(sH) || isNaN(eH)) return 8;
-  
-  let startMinutes = sH * 60 + (sM || 0);
-  let endMinutes = eH * 60 + (eM || 0);
-  
-  if (endMinutes <= startMinutes) {
-    endMinutes += 24 * 60;
-  }
-
-  const grossMinutes = endMinutes - startMinutes;
-  const breakMinutes = (parseFloat(breakHours) || 0) * 60;
-  const netMinutes = Math.max(60, grossMinutes - breakMinutes);
-  const netHours = Math.round((netMinutes / 60) * 10) / 10;
-  return netHours;
-}
-
-function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
-  const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-  return {
-    x: centerX + (radius * Math.cos(angleInRadians)),
-    y: centerY + (radius * Math.sin(angleInRadians))
-  };
-}
-
-function describeArc(x, y, radius, startAngle, endAngle) {
-  const start = polarToCartesian(x, y, radius, endAngle);
-  const end = polarToCartesian(x, y, radius, startAngle);
-  const largeArcFlag = Math.abs(endAngle - startAngle) <= 180 ? "0" : "1";
-  return [
-    "M", start.x, start.y,
-    "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
-  ].join(" ");
-}
-
-
 function normalizeTask(t) {
   return {
     ...t,
@@ -139,19 +100,15 @@ export default function ControlPanel() {
           hasSynced = true;
           const localHours = parseFloat(localStorage.getItem('meta_horas')) || 8;
           ioInstance.emit('save-store', { tasks: localTasks, dayTotalHours: localHours });
-          etTasks(normalizeTasks(localTasks));
+          setTasks(normalizeTasks(localTasks));
           setDayTotalHours(localHours);
         } else {
           hasSynced = true;
           const normalizedServerTasks = normalizeTasks(serverStore.tasks);
           setTasks(normalizedServerTasks);
-          setDayTotalHours(serverStore.dayTotalHours || 8);
-          localStorage.setItem('tarefas', JSON.stringify(serverStore.tasks || []));
-          localStorage.setItem('meta_horas', (serverStore.dayTotalHours || 8).toString());
-          setCheckpointModalTask((prev) => {
-            if (!prev) return null;
-            return (serverStore.tasks || []).find(t => t.id === prev.id) || null;
-          });
+          setDayTotalHours(serverStore.dayTotalHours);
+          localStorage.setItem('tarefas', JSON.stringify(normalizedServerTasks));
+          localStorage.setItem('meta_horas', serverStore.dayTotalHours.toString());
         }
       });
 
@@ -164,8 +121,7 @@ export default function ControlPanel() {
                 totalProgress: Number(arg.totalProgress) || 0,
                 totalTimePause: Number(arg.totalTimePause) || 0,
                 currentTimePause: Number(arg.currentTimePause) || 0,
-                active: arg.active,
-                checkpoints: arg.checkpoints || t.checkpoints || []
+                active: arg.active
               };
             }
             return t;
@@ -641,7 +597,7 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
             </div>
             <div className="relative z-10 flex items-baseline justify-between mt-auto">
               <span className="text-3xl font-extrabold font-mono text-cyan-400">{percentAlocado}%</span>
-              <span className="text-xs text-neutral-400 font-mono">{totalAlocado.toFixed(1)}h / {dayTotalHours}h</span>
+              <span className="text-xs text-neutral-400 font-mono">{Number(totalAlocado || 0).toFixed(1)}h / {dayTotalHours}h</span>
             </div>
           </div>
 
@@ -847,7 +803,7 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
                     />
                     <div className="flex justify-between text-[10px] text-neutral-600 font-mono">
                       <span>0.0h</span>
-                      <span>Máximo: {tempoRestante.toFixed(1)}h</span>
+                      <span>Máximo: {Number(tempoRestante || 0).toFixed(1)}h</span>
                     </div>
                   </div>
                 </div>
@@ -1009,7 +965,7 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-neutral-500 mt-0.5 font-mono">Alocado: {!task.flexible ? `${task.totalTimeFloat.toFixed(1)}h` : 'Variável'}</p>
+                        <p className="text-[10px] text-neutral-500 mt-0.5 font-mono">Alocado: {!task.flexible ? `${Number(task.totalTimeFloat || 0).toFixed(1)}h` : 'Variável'}</p>
                       </div>
                     </div>
 
