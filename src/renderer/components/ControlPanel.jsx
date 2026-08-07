@@ -49,6 +49,24 @@ function computeWorkdayHours(startStr, endStr, breakHours) {
   return netHours;
 }
 
+function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+  const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+  return {
+    x: centerX + (radius * Math.cos(angleInRadians)),
+    y: centerY + (radius * Math.sin(angleInRadians))
+  };
+}
+
+function describeArc(x, y, radius, startAngle, endAngle) {
+  const start = polarToCartesian(x, y, radius, endAngle);
+  const end = polarToCartesian(x, y, radius, startAngle);
+  const largeArcFlag = Math.abs(endAngle - startAngle) <= 180 ? "0" : "1";
+  return [
+    "M", start.x, start.y,
+    "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
+  ].join(" ");
+}
+
 export default function ControlPanel() {
   const [socket, setSocket] = useState(null);
   const [offline, setOffline] = useState(false);
@@ -82,6 +100,10 @@ export default function ControlPanel() {
 
   // Checkpoints Modal state
   const [checkpointModalTask, setCheckpointModalTask] = useState(null);
+
+  // Workday Timeline Modal state
+  const [isTimelineModalOpen, setIsTimelineModalOpen] = useState(false);
+  const [timelineViewMode, setTimelineViewMode] = useState('radial'); // 'radial' | 'list'
 
   // Connect socket.io
   useEffect(() => {
@@ -476,6 +498,57 @@ export default function ControlPanel() {
   const percentUsed = totalTimeSeconds > 0 ? Math.min(100, Math.round((totalUsedSeconds * 100) / totalTimeSeconds)) : 0;
   const percentPause = totalTimeSeconds > 0 ? Math.min(100, Math.round((totalPauseSeconds * 100) / totalTimeSeconds)) : 0;
 
+  // Collect all timeline items (workday bounds + checkpoints)
+  const timelineEvents = [];
+
+  timelineEvents.push({
+    id: 'ws-start',
+    type: 'workday-start',
+    label: 'Início da Jornada',
+    timeFormatted: workdayStart,
+    timestamp: workdayStart ? new Date(`1970-01-01T${workdayStart}:00`).getTime() : 0,
+    colorClass: 'text-emerald-400',
+    borderClass: 'border-emerald-500/30 bg-emerald-500/5'
+  });
+
+  tasks.forEach((t) => {
+    if (Array.isArray(t.checkpoints)) {
+      t.checkpoints.forEach((cp, idx) => {
+        const startFormatted = cp.startTime ? new Date(cp.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--';
+        const endFormatted = cp.endTime ? new Date(cp.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Em andamento...';
+        const dateFormatted = cp.startTime ? new Date(cp.startTime).toLocaleDateString([], { day: '2-digit', month: '2-digit' }) : '';
+        const isCurrent = cp.endTime === null;
+
+        timelineEvents.push({
+          id: `cp-${t.id}-${cp.id || idx}`,
+          type: 'checkpoint',
+          taskTitle: t.title,
+          flexible: t.flexible,
+          checkpointIndex: idx + 1,
+          timeFormatted: `${dateFormatted} ${startFormatted} — ${endFormatted}`,
+          startTimeRaw: cp.startTime,
+          timestamp: cp.startTime ? new Date(cp.startTime).getTime() : Date.now(),
+          duration: cp.duration || 0,
+          progressStart: cp.progressStart || 0,
+          progressEnd: cp.progressEnd || 0,
+          isCurrent,
+          colorClass: isCurrent ? 'text-cyan-400' : 'text-sky-300',
+          borderClass: isCurrent ? 'border-cyan-500/50 bg-cyan-500/10 shadow-[0_0_15px_rgba(6,182,212,0.1)]' : 'border-neutral-900 bg-neutral-950/60'
+        });
+      });
+    }
+  });
+
+  timelineEvents.push({
+    id: 'ws-end',
+    type: 'workday-end',
+    label: 'Término da Jornada',
+    timeFormatted: workdayEnd,
+    timestamp: workdayEnd ? new Date(`1970-01-01T${workdayEnd}:00`).getTime() : 86400000,
+    colorClass: 'text-red-400',
+    borderClass: 'border-red-500/30 bg-red-500/5'
+  });
+
   return (
     <div className="min-h-screen bg-black font-sans text-neutral-200 antialiased relative overflow-hidden pb-20 selection:bg-cyan-500/30 selection:text-cyan-200">
       {/* Mesh Background Gradients inspired by ForgeUI landing */}
@@ -635,7 +708,7 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
                   {/* Início */}
                   <div>
                     <label className="block text-[9px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
-                      🟢 Entrada
+                      Entrada
                     </label>
                     <input
                       type="time"
@@ -648,7 +721,7 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
                   {/* Término */}
                   <div>
                     <label className="block text-[9px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
-                      🔴 Saída
+                      Saída
                     </label>
                     <input
                       type="time"
@@ -661,7 +734,7 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
                   {/* Pausa / Almoço */}
                   <div>
                     <label className="block text-[9px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
-                      🟡 Almoço
+                      Almoço
                     </label>
                     <div className="relative flex items-center">
                       <input
@@ -781,6 +854,16 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
             <div className="flex justify-between items-center border-b border-neutral-900 pb-4">
               <h2 className="text-base font-bold text-neutral-200 tracking-tight">Atividades</h2>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsTimelineModalOpen(true)}
+                  title="Abrir Linha do Tempo da Jornada"
+                  className="border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-[0_0_10px_rgba(6,182,212,0.1)] cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Timeline
+                </button>
                 <button
                   onClick={handleExport}
                   title="Exportar atividades para um arquivo JSON"
@@ -995,6 +1078,376 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
         </div>
 
       </div>
+      {/* Vertical & Radial Infographic Timeline Modal */}
+      {isTimelineModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6" onClick={() => setIsTimelineModalOpen(false)}>
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-md animate-[fadeIn_150ms_ease-out]"></div>
+
+          <div 
+            className="relative w-full max-w-5xl rounded-3xl border border-neutral-800 bg-neutral-950/95 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.9)] animate-[scaleIn_200ms_ease-out] overflow-hidden flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Multi-color Ambient Glow Line */}
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500 via-cyan-500 via-50% to-rose-500 shadow-[0_1px_15px_rgba(6,182,212,0.8)] z-10"></div>
+
+            {/* Modal Header & View Mode Switcher */}
+            <div className="p-6 pb-4 border-b border-neutral-900/80 bg-neutral-950/80 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)] shrink-0">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                    Linha do Tempo da Jornada
+                    <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-mono text-cyan-400 uppercase font-semibold">
+                      Tumblr Infographic Mode
+                    </span>
+                  </h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Infográfico radial de distribuição de tempo e contadores
+                  </p>
+                </div>
+              </div>
+
+              {/* View Switcher Tabs & Badges */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center p-1 rounded-xl bg-neutral-900 border border-neutral-800">
+                  <button
+                    onClick={() => setTimelineViewMode('radial')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                      timelineViewMode === 'radial'
+                        ? 'bg-cyan-500 text-neutral-950 font-bold shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                        : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+                    </svg>
+                    Infográfico Radial
+                  </button>
+                  <button
+                    onClick={() => setTimelineViewMode('list')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                      timelineViewMode === 'list'
+                        ? 'bg-cyan-500 text-neutral-950 font-bold shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                        : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    Linha Cronológica
+                  </button>
+                </div>
+
+                <button 
+                  onClick={() => setIsTimelineModalOpen(false)}
+                  className="p-2 rounded-xl text-neutral-500 hover:text-white hover:bg-neutral-900 transition-all cursor-pointer border border-transparent hover:border-neutral-800"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content Body */}
+            <div className="p-6 overflow-y-auto font-sans relative">
+              {timelineViewMode === 'radial' ? (
+                /* Animated Tumblr Radial Infographic View */
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                  
+                  {/* Radial Dial Infographic Center (7 Cols) */}
+                  <div className="lg:col-span-7 flex flex-col items-center justify-center relative p-4">
+                    <div className="relative w-full max-w-[440px] aspect-square flex items-center justify-center">
+                      <svg className="w-full h-full transform -rotate-90 select-none overflow-visible" viewBox="0 0 480 480">
+                        {/* Outer Workday Rim Circle */}
+                        <circle cx="240" cy="240" r="215" fill="none" stroke="#171717" strokeWidth="1" strokeDasharray="3 3" />
+                        <circle cx="240" cy="240" r="185" fill="none" stroke="#262626" strokeWidth="1" />
+
+                        {/* Background Base Track Ring */}
+                        <circle cx="240" cy="240" r="150" fill="none" stroke="#121212" strokeWidth="24" />
+
+                        {/* Rotating Dashed Inner Ring */}
+                        <circle 
+                          cx="240" 
+                          cy="240" 
+                          r="115" 
+                          fill="none" 
+                          stroke="#06b6d4" 
+                          strokeWidth="1.5" 
+                          strokeDasharray="6 12" 
+                          opacity="0.3" 
+                          className="animate-spin-slow"
+                        />
+
+                        {/* Draw Checkpoint Session Radial Arcs */}
+                        {(() => {
+                          const checkpointsList = timelineEvents.filter(e => e.type === 'checkpoint');
+                          if (checkpointsList.length === 0) return null;
+
+                          // Map time span to angles (0 to 360)
+                          const totalSpan = 24 * 3600; // 24h dial
+                          return checkpointsList.map((cp, idx) => {
+                            const startSec = cp.startTimeRaw ? (new Date(cp.startTimeRaw).getHours() * 3600 + new Date(cp.startTimeRaw).getMinutes() * 60 + new Date(cp.startTimeRaw).getSeconds()) : 0;
+                            const dur = Math.max(300, cp.duration || 600); // min 5m arc for visual clarity
+                            const endSec = startSec + dur;
+
+                            const startAngle = (startSec / totalSpan) * 360;
+                            const endAngle = Math.min(359.9, ((endSec / totalSpan) * 360));
+                            const sweep = Math.max(8, endAngle - startAngle);
+
+                            const color = cp.isCurrent ? '#06b6d4' : (cp.flexible ? '#f43f5e' : '#a855f7');
+                            const radius = 150 + (idx % 2 === 0 ? 0 : 18);
+
+                            return (
+                              <g key={cp.id}>
+                                <path
+                                  d={describeArc(240, 240, radius, startAngle, startAngle + sweep)}
+                                  fill="none"
+                                  stroke={color}
+                                  strokeWidth="18"
+                                  strokeLinecap="round"
+                                  className={`animate-draw-arc ${cp.isCurrent ? 'animate-pulse-glow' : ''}`}
+                                  style={{ animationDelay: `${idx * 0.15}s` }}
+                                />
+                              </g>
+                            );
+                          });
+                        })()}
+
+                        {/* Central Hub Focal Circles */}
+                        <circle cx="240" cy="240" r="92" fill="#09090b" stroke="#262626" strokeWidth="2" />
+                        <circle cx="240" cy="240" r="88" fill="none" stroke="#06b6d4" strokeWidth="1" opacity="0.4" />
+                      </svg>
+
+                      {/* Central Focal Content (Hub Typography) */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 select-none pointer-events-none">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-500">
+                          WorkTimeBar
+                        </span>
+                        <h2 className="text-3xl font-extrabold font-mono text-cyan-400 tracking-tight my-0.5">
+                          {convertSecondsToHour(totalUsedSeconds).replace('h', '')}
+                        </h2>
+                        <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider font-semibold">
+                          Horas Usadas
+                        </span>
+                        <div className="mt-2 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[9px] font-mono text-cyan-300 font-bold">
+                          {percentUsed}% da Meta
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Infographic Legend Bar */}
+                    <div className="mt-4 flex items-center justify-center gap-4 flex-wrap text-[11px] font-mono">
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#f43f5e] shadow-[0_0_8px_rgba(244,63,94,0.6)]"></span>
+                        <span className="text-neutral-300">Alocar Tempo Fixo</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#a855f7] shadow-[0_0_8px_rgba(168,85,247,0.6)]"></span>
+                        <span className="text-neutral-300">Tempo Fixo</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#06b6d4] shadow-[0_0_8px_rgba(6,182,212,0.6)] animate-pulse"></span>
+                        <span className="text-cyan-400 font-bold">Sessão Ativa</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Infographic Analytics Dashboard Side (5 Cols - Tumblr Right Panel style) */}
+                  <div className="lg:col-span-5 space-y-4">
+                    <div className="p-5 rounded-2xl border border-neutral-900 bg-neutral-950/80 backdrop-blur-xl space-y-4">
+                      <div className="flex items-center justify-between border-b border-neutral-900 pb-3">
+                        <h4 className="text-xs font-bold text-neutral-200 uppercase tracking-wider font-mono">
+                          Distribuição por Atividade
+                        </h4>
+                        <span className="text-[10px] font-mono text-neutral-500">{computedTasks.length} Atividades</span>
+                      </div>
+
+                      {/* Activity Allocation Gauges */}
+                      <div className="space-y-3">
+                        {computedTasks.map((t) => {
+                          const tPercent = totalTimeSeconds > 0 ? Math.min(100, Math.round(((t.totalProgress || 0) * 100) / totalTimeSeconds)) : 0;
+                          const tColor = t.active ? 'bg-cyan-500' : (t.flexible ? 'bg-[#f43f5e]' : 'bg-[#a855f7]');
+                          return (
+                            <div key={t.id} className="space-y-1.5">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-semibold text-neutral-200 truncate max-w-[180px]">{t.title}</span>
+                                <span className="font-mono text-neutral-400 text-[11px] font-bold">{tPercent}%</span>
+                              </div>
+                              <div className="h-2 w-full rounded-full bg-neutral-900 overflow-hidden flex">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-500 ${tColor}`}
+                                  style={{ width: `${tPercent}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {computedTasks.length === 0 && (
+                          <p className="text-xs text-neutral-500 text-center py-4">Nenhuma atividade alocada no momento.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Secondary Metrics Card */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-4 rounded-2xl border border-neutral-900 bg-neutral-950/80 backdrop-blur-xl space-y-1">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-500 block">
+                          Pausas Totais
+                        </span>
+                        <span className="text-lg font-bold font-mono text-amber-400 block">
+                          {totalPausasHoras.toFixed(1)}h
+                        </span>
+                        <span className="text-[9px] text-neutral-600 font-mono block">Tempo de descanso</span>
+                      </div>
+
+                      <div className="p-4 rounded-2xl border border-neutral-900 bg-neutral-950/80 backdrop-blur-xl space-y-1">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-500 block">
+                          Retornos
+                        </span>
+                        <span className="text-lg font-bold font-mono text-cyan-400 block">
+                          {timelineEvents.filter(e => e.type === 'checkpoint').length}
+                        </span>
+                        <span className="text-[9px] text-neutral-600 font-mono block">Sessões marcadas</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              ) : (
+                /* Chronological Vertical List View */
+                <div className="space-y-6 relative pl-8 md:pl-10">
+                  <div className="absolute top-8 bottom-8 left-4 md:left-5 w-[3px] bg-gradient-to-b from-emerald-500 via-cyan-500 via-50% to-rose-500 opacity-80 shadow-[0_0_12px_rgba(6,182,212,0.4)]"></div>
+
+                  {timelineEvents.map((evt) => {
+                    if (evt.type === 'workday-start') {
+                      return (
+                        <div key={evt.id} className="relative flex items-center justify-between p-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-neutral-950/80 to-neutral-950/90 backdrop-blur-xl shadow-[0_0_20px_rgba(16,185,129,0.08)]">
+                          <div className="flex items-center gap-3.5">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold font-mono text-emerald-400 block tracking-wide">{evt.timeFormatted}</span>
+                              <span className="text-xs font-semibold text-neutral-200">{evt.label}</span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                            Entrada
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    if (evt.type === 'workday-end') {
+                      return (
+                        <div key={evt.id} className="relative flex items-center justify-between p-4 rounded-2xl border border-rose-500/30 bg-gradient-to-r from-rose-500/10 via-neutral-950/80 to-neutral-950/90 backdrop-blur-xl shadow-[0_0_20px_rgba(244,63,94,0.08)]">
+                          <div className="flex items-center gap-3.5">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <span className="text-xs font-bold font-mono text-rose-400 block tracking-wide">{evt.timeFormatted}</span>
+                              <span className="text-xs font-semibold text-neutral-200">{evt.label}</span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-mono text-rose-400 font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20">
+                            Saída
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div 
+                        key={evt.id} 
+                        className={`relative p-5 rounded-2xl border transition-all duration-300 backdrop-blur-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
+                          evt.isCurrent 
+                            ? 'border-cyan-400/60 bg-gradient-to-r from-cyan-950/40 via-neutral-950/90 to-neutral-950/90 shadow-[0_0_30px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/30' 
+                            : 'border-neutral-900 bg-neutral-950/80 hover:border-neutral-800 hover:bg-neutral-900/40 shadow-md'
+                        }`}
+                      >
+                        <div className="space-y-2 min-w-0 flex-1">
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <h4 className="text-sm font-bold text-white tracking-tight truncate">{evt.taskTitle}</h4>
+                            <span className="text-[10px] font-mono font-semibold px-2.5 py-0.5 rounded-full border border-neutral-800 bg-neutral-900 text-neutral-300">
+                              Sessão #{evt.checkpointIndex}
+                            </span>
+                            {evt.flexible ? (
+                              <span className="text-[10px] font-mono font-semibold px-2.5 py-0.5 rounded-full border border-cyan-500/20 bg-cyan-500/10 text-cyan-400">
+                                Alocar Tempo Fixo
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-mono font-semibold px-2.5 py-0.5 rounded-full border border-purple-500/20 bg-purple-500/10 text-purple-400">
+                                Tempo Fixo
+                              </span>
+                            )}
+                            {evt.isCurrent ? (
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/20 border border-cyan-500/40 px-2.5 py-0.5 rounded-full animate-pulse shadow-[0_0_10px_rgba(6,182,212,0.4)]">
+                                ⚡ Em andamento
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-neutral-500 bg-neutral-900 px-2 py-0.5 rounded-full">
+                                Concluída
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-[11px] font-mono text-neutral-400 flex items-center gap-4 flex-wrap pt-0.5">
+                            <div className="flex items-center gap-1.5 text-neutral-300">
+                              <svg className="w-3.5 h-3.5 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span>{evt.timeFormatted}</span>
+                            </div>
+                            <span className="text-neutral-700">•</span>
+                            <div className="flex items-center gap-1.5 text-neutral-400">
+                              <span>Progresso:</span>
+                              <span className="text-cyan-400 font-bold">{convertSecondsToHour(evt.progressStart)}</span>
+                              <span>➔</span>
+                              <span className="text-cyan-400 font-bold">{convertSecondsToHour(evt.progressEnd)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-left md:text-right shrink-0 border-t md:border-t-0 md:border-l border-neutral-900 pt-3 md:pt-0 md:pl-5 w-full md:w-auto flex md:flex-col items-center md:items-end justify-between">
+                          <span className="font-mono font-bold text-cyan-400 text-base leading-tight">
+                            {convertSecondsToHour(evt.duration)}
+                          </span>
+                          <span className="text-[9px] text-neutral-500 uppercase font-mono tracking-widest mt-0.5 block">
+                            Decorridos
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 px-6 border-t border-neutral-900/80 bg-neutral-950/90 flex justify-end shrink-0">
+              <button
+                onClick={() => setIsTimelineModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl bg-white hover:bg-neutral-100 text-black text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+              >
+                Fechar Timeline
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Custom Modal */}
       {modal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={closeModal}>
