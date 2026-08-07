@@ -118,6 +118,23 @@ let store = {
   dayTotalHours: 8
 };
 
+function normalizeTask(t) {
+  return {
+    ...t,
+    totalTimeFloat: parseFloat(t.totalTimeFloat) || 0,
+    totalTimeSeconds: Number(t.totalTimeSeconds) || 0,
+    totalProgress: Number(t.totalProgress) || 0,
+    totalTimePause: Number(t.totalTimePause) || 0,
+    currentTimePause: Number(t.currentTimePause) || 0,
+    lastTimestempPlay: Number(t.lastTimestempPlay) || 0,
+    lastTimestempPause: Number(t.lastTimestempPause) || 0
+  };
+}
+
+function normalizeTasks(tasks) {
+  return (tasks || []).map(normalizeTask);
+}
+
 function convertFloatToSeconds(time) {
   return Math.floor(time * 3600);
 }
@@ -157,7 +174,7 @@ function loadStore() {
     if (fs.existsSync(STORAGE_PATH)) {
       const data = JSON.parse(fs.readFileSync(STORAGE_PATH, 'utf-8'));
       if (data && typeof data === 'object') {
-        store.tasks = data.tasks || [];
+        store.tasks = normalizeTasks(data.tasks);
         store.dayTotalHours = typeof data.dayTotalHours === 'number' ? data.dayTotalHours : 8;
 
         const activeTask = store.tasks.find(t => t.active);
@@ -393,14 +410,14 @@ function deleteAndMergeCheckpoint(task, checkpointId) {
       }
       return t;
     });
-    saveStoreImmediately();
+    StoreImmediately();
     io.emit('sync-store', store);
   });
 
   socket.on('save-store', (newStore) => {
     log('SOCKET', 'Novo store recebido do painel.', newStore);
     if (newStore && typeof newStore === 'object') {
-      store.tasks = (newStore.tasks || []).map(t => {
+      store.tasks = (normalizeTasks(newStore.tasks)).map(t => {
         const existing = store.tasks.find(et => et.id === t.id);
         const incomingCheckpoints = (Array.isArray(t.checkpoints) && t.checkpoints.length > 0)
           ? t.checkpoints
