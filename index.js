@@ -305,6 +305,17 @@ io.on('connection', (socket) => {
 
   socket.on('evento', (msg) => {
     log('SOCKET', 'Instruções recebidas do painel. Atualizando overlay.', msg);
+    if (!msg || !msg.id) return;
+
+    const exists = store.tasks.some(t => t.id === msg.id);
+    if (!exists) {
+      store.tasks.push({
+        ...msg,
+        active: true,
+        checkpoints: Array.isArray(msg.checkpoints) ? msg.checkpoints : []
+      });
+    }
+
     store.tasks = store.tasks.map(t => {
       const isNowActive = (t.id === msg.id);
       return {
@@ -338,6 +349,54 @@ io.on('connection', (socket) => {
     io.emit('sync-store', store);
   });
 
+function deleteAndMergeCheckpoint(task, checkpointId) {
+  if (!task || !Array.isArray(task.checkpoints)) return task;
+
+  const idx = task.checkpoints.findIndex(c => String(c.id) === String(checkpointId));
+  if (idx === -1) return task;
+
+  const targetCp = task.checkpoints[idx];
+  // Do not allow deleting active checkpoint (endTime === null)
+  if (targetCp.endTime === null) return task;
+
+  let updatedCheckpoints = [...task.checkpoints];
+
+  if (idx + 1 < updatedCheckpoints.length) {
+    // Merge into next checkpoint: startTime becomes targetCp.startTime, duration accumulates
+    const nextCp = { ...updatedCheckpoints[idx + 1] };
+    nextCp.startTime = targetCp.startTime;
+    nextCp.progressStart = targetCp.progressStart;
+    nextCp.duration = (nextCp.duration || 0) + (targetCp.duration || 0);
+    updatedCheckpoints[idx + 1] = nextCp;
+  } else if (idx - 1 >= 0) {
+    // Fallback: merge into previous checkpoint if deleting last completed one
+    const prevCp = { ...updatedCheckpoints[idx - 1] };
+    prevCp.endTime = targetCp.endTime;
+    prevCp.progressEnd = targetCp.progressEnd;
+    prevCp.duration = (prevCp.duration || 0) + (targetCp.duration || 0);
+    updatedCheckpoints[idx - 1] = prevCp;
+  }
+
+  updatedCheckpoints.splice(idx, 1);
+
+  return {
+    ...task,
+    checkpoints: updatedCheckpoints
+  };
+}
+
+  socket.on('delete-checkpoint', ({ taskId, checkpointId }) => {
+    log('SOCKET', `Solicitação de exclusão do checkpoint ${checkpointId} da tarefa ${taskId}`);
+    store.tasks = store.tasks.map(t => {
+      if (t.id === taskId) {
+        return deleteAndMergeCheckpoint(t, checkpointId);
+      }
+      return t;
+    });
+    saveStoreImmediately();
+    io.emit('sync-store', store);
+  });
+
   socket.on('save-store', (newStore) => {
     log('SOCKET', 'Novo store recebido do painel.', newStore);
     if (newStore && typeof newStore === 'object') {
@@ -357,9 +416,66 @@ io.on('connection', (socket) => {
       io.emit('sync-store', store);
     }
   });
+
+  socket.on('exit', (msg) => {
+    log('SOCKET', 'Comando EXIT recebido do painel. Encerrando processos...');
+    store.tasks = store.tasks.map(t => ({
+      ...t,
+      active: false,
+      checkpoints: syncTaskCheckpoints(t, false, t.totalProgress)
+    }));
+    saveStoreImmediately();
+    packege = {};
+    
+    io.emit('exit', msg);
+    setTimeout(() => process.exit(0), 500);
+  });
 });
 
 // IPC Main communication listeners
+ipcMain.on('checkpoint', (event, arg) => {
+  log('IPC', 'Manual checkpoint solicitado pelo overlay.');
+  const activeTask = store.tasks.find(t => t.active);
+  if (activeTask) {
+    const currentProgress = activeTask.totalProgress || 0;
+    let checkpoints = Array.isArray(activeTask.checkpoints) ? [...activeTask.checkpoints] : [];
+    
+    checkpoints = checkpoints.map(c => {
+      if (c.endTime === null) {
+        return {
+          ...c,
+          endTime: new Date().toISOString(),
+          progressEnd: currentProgress,
+          duration: Math.max(0, currentProgress - c.progressStart)
+        };
+      }
+      return c;
+    });
+
+    checkpoints.push({
+      id: Date.now(),
+      startTime: new Date().toISOString(),
+      endTime: null,
+      progressStart: currentProgress,
+      progressEnd: currentProgress,
+      duration: 0
+    });
+
+    store.tasks = store.tasks.map(t => {
+      if (t.id === activeTask.id) {
+        return {
+          ...t,
+          checkpoints
+        };
+      }
+      return t;
+    });
+
+    saveStoreImmediately();
+    io.emit('sync-store', store);
+  }
+});
+
 ipcMain.on('status', (event, arg) => {
   log('IPC', 'Overlay status recebido:', arg);
   let updatedTask = null;

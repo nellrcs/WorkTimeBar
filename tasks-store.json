@@ -1,33 +1,54 @@
 {
   "tasks": [
     {
-      "id": "19fab653a19",
-      "title": "how",
-      "totalTimeFloat": 0.9,
-      "totalTimeSeconds": 3240,
-      "totalProgress": 1677,
-      "totalTimePause": 3,
+      "id": "19fda1b0be7",
+      "title": "vbcb",
+      "totalTimeFloat": 0.2,
+      "totalTimeSeconds": 720,
+      "totalProgress": 386,
+      "totalTimePause": 9,
+      "active": false,
+      "flexible": false,
+      "checkpoints": [
+        {
+          "id": 1786072480579,
+          "startTime": "2026-08-07T02:43:54.224Z",
+          "endTime": "2026-08-07T03:14:59.050Z",
+          "progressStart": 0,
+          "progressEnd": 371,
+          "duration": 371
+        },
+        {
+          "id": 1786072499050,
+          "startTime": "2026-08-07T03:14:59.050Z",
+          "endTime": "2026-08-07T03:15:14.245Z",
+          "progressStart": 371,
+          "progressEnd": 386,
+          "duration": 15
+        }
+      ],
+      "currentTimePause": 9
+    },
+    {
+      "id": "19fda1b70c8",
+      "title": "bvcbvc",
+      "totalTimeFloat": 0.3,
+      "totalTimeSeconds": 1080,
+      "totalProgress": 209,
+      "totalTimePause": 0,
       "active": true,
       "flexible": false,
       "checkpoints": [
         {
-          "id": 1785286970127,
-          "startTime": "2026-07-29T01:02:50.127Z",
-          "endTime": "2026-07-29T01:03:53.758Z",
-          "progressStart": 0,
-          "progressEnd": 62,
-          "duration": 62
-        },
-        {
-          "id": 1785287037168,
-          "startTime": "2026-07-29T01:03:57.168Z",
+          "id": 1786072533963,
+          "startTime": "2026-08-07T03:15:33.963Z",
           "endTime": null,
-          "progressStart": 63,
-          "progressEnd": 1677,
-          "duration": 1614
+          "progressStart": 1,
+          "progressEnd": 209,
+          "duration": 208
         }
       ]
     }
   ],
-  "dayTotalHours": 9
+  "dayTotalHours": 8
 }

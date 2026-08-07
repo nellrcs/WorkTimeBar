@@ -103,10 +103,14 @@ export default function ControlPanel() {
           setDayTotalHours(localHours);
         } else {
           hasSynced = true;
-          setTasks(serverStore.tasks);
-          setDayTotalHours(serverStore.dayTotalHours);
-          localStorage.setItem('tarefas', JSON.stringify(serverStore.tasks));
-          localStorage.setItem('meta_horas', serverStore.dayTotalHours.toString());
+          setTasks(serverStore.tasks || []);
+          setDayTotalHours(serverStore.dayTotalHours || 8);
+          localStorage.setItem('tarefas', JSON.stringify(serverStore.tasks || []));
+          localStorage.setItem('meta_horas', (serverStore.dayTotalHours || 8).toString());
+          setCheckpointModalTask((prev) => {
+            if (!prev) return null;
+            return (serverStore.tasks || []).find(t => t.id === prev.id) || null;
+          });
         }
       });
 
@@ -273,12 +277,12 @@ export default function ControlPanel() {
     setTaskDuration(0);
   };
 
-  const handleRemoveTask = (index) => {
-    const toRemove = tasks[index];
-    const newTasks = tasks.filter((_, i) => i !== index);
+  const handleRemoveTask = (taskId) => {
+    const toRemove = tasks.find(t => t.id === taskId);
+    const newTasks = tasks.filter(t => t.id !== taskId);
     saveTasks(newTasks);
     
-    if (toRemove.active && socket) {
+    if (toRemove && toRemove.active && socket) {
       socket.emit('stop', {});
     }
   };
@@ -324,8 +328,8 @@ export default function ControlPanel() {
     setEditingTitleText('');
   };
 
-  const handleSetActive = (index) => {
-    const targetTask = computedTasks[index];
+  const handleSetActive = (taskId) => {
+    const targetTask = computedTasks.find(t => t.id === taskId);
     if (!targetTask) return;
 
     setTasks(prevTasks => {
@@ -366,6 +370,24 @@ export default function ControlPanel() {
       localStorage.removeItem('tarefas');
       closeModal();
     });
+  };
+
+  const handleExitApp = () => {
+    showModal('danger', 'Encerrar Aplicativo', 'Deseja encerrar o WorkTimeBar e fechar a janela flutuante?', () => {
+      if (socket) {
+        socket.emit('exit', {});
+      }
+      if (window.electronAPI) {
+        window.electronAPI.send('exit', {});
+      }
+      closeModal();
+    });
+  };
+
+  const handleDeleteCheckpoint = (taskId, checkpointId) => {
+    if (socket) {
+      socket.emit('delete-checkpoint', { taskId, checkpointId });
+    }
   };
 
   const handleExport = () => {
@@ -480,6 +502,18 @@ export default function ControlPanel() {
               <span className={`h-1.5 w-1.5 rounded-full ${offline ? 'bg-red-500 animate-pulse' : 'bg-cyan-500 animate-pulse'}`}></span>
               {offline ? 'Off-line' : 'Contador Ativo'}
             </div>
+
+            <button
+              onClick={handleExitApp}
+              type="button"
+              title="Encerrar Aplicativo"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 text-[11px] font-semibold transition-all shadow-[0_0_12px_rgba(239,68,68,0.15)] cursor-pointer"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
+              </svg>
+              <span>Fechar App</span>
+            </button>
           </div>
         </nav>
 
@@ -789,12 +823,12 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
 
             {/* List of Stripe Payment style notifications */}
             <div className="space-y-3">
-              {computedTasks.map((task, idx) => {
+              {computedTasks.map((task) => {
                 const percentTaskAlocado = dayTotalHours > 0 ? (task.totalTimeFloat * 100) / dayTotalHours : 0;
                 return (
                   <div 
                     key={task.id}
-                    onClick={() => handleSetActive(idx)}
+                    onClick={() => handleSetActive(task.id)}
                     className={`group relative overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer p-4 flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md ${
                       task.active 
                         ? 'border-cyan-500/40 bg-neutral-950 shadow-[0_0_15px_rgba(6,182,212,0.06)]' 
@@ -929,8 +963,9 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
                         </button>
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); handleRemoveTask(idx); }}
-                          className="p-2 rounded-lg border border-neutral-900 bg-neutral-950/60 text-neutral-600 hover:text-red-400 hover:bg-red-500/5 transition-all"
+                          onClick={(e) => { e.stopPropagation(); handleRemoveTask(task.id); }}
+                          title="Excluir atividade"
+                          className="p-2 rounded-lg border border-neutral-900 bg-neutral-950/60 text-neutral-600 hover:text-red-400 hover:bg-red-500/5 transition-all cursor-pointer"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1124,13 +1159,27 @@ Acompanhe suas atividades em tempo real, defina limites e mantenha o foco — tu
                           </div>
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <span className="font-mono font-bold text-cyan-400 text-sm">
-                          {convertSecondsToHour(cp.duration || 0)}
-                        </span>
-                        <div className="text-[9px] text-neutral-500 uppercase tracking-wider">
-                          Decorridos
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right">
+                          <span className="font-mono font-bold text-cyan-400 text-sm">
+                            {convertSecondsToHour(cp.duration || 0)}
+                          </span>
+                          <div className="text-[9px] text-neutral-500 uppercase tracking-wider">
+                            Decorridos
+                          </div>
                         </div>
+                        {!isCurrent && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCheckpoint(checkpointModalTask.id, cp.id)}
+                            title="Excluir e mesclar com a próxima sessão"
+                            className="p-1.5 rounded-lg border border-neutral-900 bg-neutral-950/60 text-neutral-600 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
