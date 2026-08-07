@@ -67,6 +67,24 @@ function describeArc(x, y, radius, startAngle, endAngle) {
   ].join(" ");
 }
 
+
+function normalizeTask(t) {
+  return {
+    ...t,
+    totalTimeFloat: parseFloat(t.totalTimeFloat) || 0,
+    totalTimeSeconds: Number(t.totalTimeSeconds) || 0,
+    totalProgress: Number(t.totalProgress) || 0,
+    totalTimePause: Number(t.totalTimePause) || 0,
+    currentTimePause: Number(t.currentTimePause) || 0,
+    lastTimestempPlay: Number(t.lastTimestempPlay) || 0,
+    lastTimestempPause: Number(t.lastTimestempPause) || 0
+  };
+}
+
+function normalizeTasks(tasks) {
+  return (tasks || []).map(normalizeTask);
+}
+
 export default function ControlPanel() {
   const [socket, setSocket] = useState(null);
   const [offline, setOffline] = useState(false);
@@ -121,11 +139,12 @@ export default function ControlPanel() {
           hasSynced = true;
           const localHours = parseFloat(localStorage.getItem('meta_horas')) || 8;
           ioInstance.emit('save-store', { tasks: localTasks, dayTotalHours: localHours });
-          setTasks(localTasks);
+          etTasks(normalizeTasks(localTasks));
           setDayTotalHours(localHours);
         } else {
           hasSynced = true;
-          setTasks(serverStore.tasks || []);
+          const normalizedServerTasks = normalizeTasks(serverStore.tasks);
+          setTasks(normalizedServerTasks);
           setDayTotalHours(serverStore.dayTotalHours || 8);
           localStorage.setItem('tarefas', JSON.stringify(serverStore.tasks || []));
           localStorage.setItem('meta_horas', (serverStore.dayTotalHours || 8).toString());
@@ -142,9 +161,9 @@ export default function ControlPanel() {
             if (t.id === arg.id) {
               return {
                 ...t,
-                totalProgress: arg.totalProgress,
-                totalTimePause: arg.totalTimePause,
-                currentTimePause: arg.currentTimePause,
+                totalProgress: Number(arg.totalProgress) || 0,
+                totalTimePause: Number(arg.totalTimePause) || 0,
+                currentTimePause: Number(arg.currentTimePause) || 0,
                 active: arg.active,
                 checkpoints: arg.checkpoints || t.checkpoints || []
               };
@@ -171,7 +190,7 @@ export default function ControlPanel() {
 
     if (saved) {
       try {
-        setTasks(JSON.parse(saved));
+        setTasks(normalizeTasks(JSON.parse(saved)));
       } catch (e) {
         setTasks([]);
       }
